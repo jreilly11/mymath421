@@ -1,0 +1,175 @@
+
+---
+output: # rmarkdown::github_document
+  html_document:
+    theme: cerulean
+    toc: true
+  pdf_document: default
+  word_document: default
+title: "Assignment 5: Handle Missing Values"
+---
+
+***How to do it?***: 
+
+- Open the Rmarkdown file of this assignment ([link](assignment5.Rmd)) in Rstudio. 
+
+- Right under each **question**, insert  a code chunk (you can use the hotkey `Ctrl + Alt + I` to add a code chunk) and code the solution for the question. 
+
+- `Knit` the rmarkdown file (hotkey: `Ctrl + Alt + K`) to export an html.  
+
+-  Publish the html file to your Githiub Page. 
+
+***Submission***: Submit the link on Github of the assignment to Canvas. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+-------
+
+**The data:** 
+
+This assignment works with the Adult Census Data that can be downloaded at [this link.](https://bryantstats.github.io/math421/data/adult_census_missing.csv)
+
+-------
+
+**Questions**
+
+1. Use `read_csv` to import the data.  Show the number of NAs for each columns.   
+```{r}
+# Importing data
+library(tidyverse)
+df <- read_csv("adult_census.csv")
+
+# Showing the number of NAs for each of the columns
+colSums(is.na(df))
+```
+
+2. Using function `aggr` the VIM package to plot the number of NAs for each column. 
+```{r}
+# install.packages('VIM')
+library(VIM)
+aggr(df)
+```
+
+3. Find other forms of missing values. Hint: You can use the `table` function to check if there are suspicious categories (Unknown, for example) in a variable. What all other forms of missing values shown in the data. 
+```{r}
+# Checking other missing value forms for age variable
+table(df$age)
+```
+```{r}
+# Checking other missing value forms for workclass variable
+table(df$workclass)
+
+# Can see that '?' represents missing values
+```
+```{r}
+# Checking other missing value forms for education variable
+table(df$education)
+```
+```{r}
+# Checking other missing value forms for education.num variable
+table(df$education.num)
+```
+```{r}
+# Checking other missing value forms for marital.status variable
+table(df$marital.status)
+```
+```{r}
+# Checking other missing value forms for occupation variable
+table(df$occupation)
+
+# Can see that '?' represents missing values
+```
+```{r}
+# Checking other missing value forms for relationship variable
+table(df$relationship)
+```
+```{r}
+# Checking other missing value forms for race variable
+table(df$race)
+```
+```{r}
+# Checking other missing value forms for sex variable
+table(df$sex)
+```
+```{r}
+# Checking other missing value forms for capital.gain variable
+table(df$capital.gain)
+```
+```{r}
+# Checking other missing value forms for capital.loss variable
+table(df$capital.loss)
+```
+```{r}
+# Checking other missing value forms for hours.per.week variable
+table(df$hours.per.week)
+```
+```{r}
+# Checking other missing value forms for native.country variable
+table(df$native.country)
+
+# Can see that '?' represents missing values
+```
+```{r}
+# Checking other missing value forms for income variable
+table(df$income)
+```
+
+4. Replace all the forms of missing values found to NA
+```{r}
+# Only need to account for '?' for other missing value form
+df <- replace(df, df == '?', NA)
+```
+
+5. Re-plot the number of NAs for each column. 
+```{r}
+library(VIM)
+aggr(df)
+```
+
+6. Approach 1 to handle NAs: remove all rows that have any NAs. Save the dataset after removing as a different data. The original data is unchanged (still have NAs).  How many rows left after removing?
+```{r}
+df_1 <- df %>% drop_na
+
+nrow(df)
+nrow(df_1)
+```
+
+7. Approach 2 to handle NAs:  Fill all the NAs with the previous or next value. (Hint: Using `fill` function).  Save the dataset after filling as a different data. The original data is unchanged (still have NAs). 
+```{r}
+df_2 <- df %>% fill(names(df),.direction = 'updown')
+colSums(is.na(df_2))
+```
+
+8. Approach 3 to handle NAs: For numeric variable, replace the NAs by the median.  For categorical variables, replace the NAs to the majority. 
+```{r}
+colSums(is.na(df))
+str(df)
+```
+```{r}
+# Replacing NAs for missing variables (workclass, occupation, native.country)
+df_3 <- df
+majority_workclass <- names(which.max(table(df_3$workclass)))
+df_3$workclass <- replace_na(df_3$workclass, majority_workclass)
+
+majority_occupation <- names(which.max(table(df_3$occupation)))
+df_3$occupation <- replace_na(df_3$occupation, majority_occupation)
+
+majority_native.country <- names(which.max(table(df_3$native.country)))
+df_3$native.country <- replace_na(df_3$native.country, majority_native.country)
+
+colSums(is.na(df_3))
+```
+```{r}
+# There are no numeric variables with missing values, however, the following...
+# ...code would be how to replace NAs with the median
+
+##### median_variable_name <- median(df$variable_name, na.rm=TRUE)
+##### df$variable_name <- replace_na(df_variable_name, median_variable_name)
+```
+
+
+
+
+
