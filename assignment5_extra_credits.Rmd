@@ -1,0 +1,141 @@
+
+---
+output: # rmarkdown::github_document
+  html_document:
+  pdf_document: default
+  word_document: default
+title: "Assignment 5 - Extra Credits"
+---
+
+***How to do it?***: 
+
+- Open the Rmarkdown file of this assignment ([link](assignment5_extra_credits.Rmd)) in Rstudio. 
+
+- Right under each **question**, insert  a code chunk (you can use the hotkey `Ctrl + Alt + I` to add a code chunk) and code the solution for the question. 
+
+- `Knit` the rmarkdown file (hotkey: `Ctrl + Alt + K`) to export an html.  
+
+-  Publish the html file to your Githiub Page. 
+
+***Submission***: Submit the link on Github of the assignment to Canvas under Assignment 5 - Extra Credits. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+-------
+
+1. Download the c2015 dataset to your computer at [this link](../data/c2015.xlsx). Load the library `readxl` (library(readxl)) then use the function `read_excel()` to read the c2015 dataset.  The data is from Fatality Analysis Reporting System (FARS). The data includes vital accidents information, such as when, where, and how the accident happened. FARS also includes the drivers and passengers' information, such as age,gender etc.  Some of the fatal accident had multiple vehicles involved.  More information about FARS can be found at: https://www.nhtsa.gov/research-data/fatality-analysis-reporting-system-fars
+```{r}
+library(readxl)
+df <- read_excel('c2015.xlsx')
+```
+
+2. Let's study the variable `SEX`. How many missing values in the NAs form? 
+```{r}
+sum(is.na(df$SEX))
+# There are 0 missing values in the NA form
+```
+
+3. Still with variable `SEX`. There are missing values in this variables that are not `NAs`. Identify the forms of missing values in this variable. Change all the forms of missing values to `NAs`. 
+```{r}
+table(df$SEX)
+# 'Unknown' appears to be a form of missing value for the SEX variable (meaning...
+# ...that we have 969 missing values)
+
+# Changing Unknowns to NAs
+df$SEX <- replace(df$SEX, df$SEX == 'Unknown', NA)
+```
+
+4. Still with variable `SEX`. After all the missing values are in the `NAs` form.  Change the missing values of this variable to the majority sex. 
+```{r}
+library(tidyverse)
+# Getting the majority sex
+majority_SEX <- names(which.max(table(df$SEX)))
+# Replacing NAs with majority sex
+df$SEX <- replace_na(df$SEX, majority_SEX)
+```
+
+5. Let's study variable `AGE`. Use the `table` function to check out the values of these variable and forms of missing values. Use `na_if` to change all the forms of missing values to `NAs`. 
+```{r}
+# Checking out forms of missing values for AGE variable
+table(df$AGE)
+
+# Appears to also have 'Unknown' to represent missing values
+df$AGE <- na_if(df$AGE, 'Unknown')
+```
+
+6. Still with variable `AGE`.  Use the `str_replace` to replace `Less than 1` to '0' (character 0, not number 0).
+```{r}
+df$AGE <- str_replace(df$AGE, 'Less than 1', '0')
+```
+
+7. Still with variable `AGE`. Use the `class` function to check the type of this variable.  Use the `as.numeric` function to change the type of the variable to numeric.
+```{r}
+class(df$AGE)
+# AGE variable is a character type
+
+# Converting AGE to a numeric variable
+df$AGE <- as.numeric(df$AGE)
+```
+
+8. Still with variable `AGE`. Replace the missing values `NAs` by the mean of the variable.
+```{r}
+# Acquiring mean of AGE variable
+mean_AGE <- mean(df$AGE, na.rm=TRUE)
+
+# Replacing NAs with the mean of the AGE variable
+df$AGE <- replace_na(df$AGE, mean_AGE)
+```
+
+9. Let's fix the variable `TRAV_SP`. Do the follows.
+
+- Use the `table` function to check all the values of this variable.  Use the `str_remove` to remove the `MPH` in each value.
+- Remove the row with the travel speed `Greater`
+- Use the `str_replace` function to replace `Stopped` by '0' (dont forget the quotation mark around 0)
+- Use `na_if` to change all the forms of missing values to `NAs`
+- Check the type of this variable using `class`. Use `as.numeric` to change the type to numeric.
+- Use `replace_na` to replace the `NAs` to the median of the variable. 
+```{r}
+# Checking out all values of TRAV_SP variable
+table(df$TRAV_SP)
+
+# Removing 'MPH' from each value
+df$TRAV_SP <- str_remove(df$TRAV_SP, 'MPH')
+
+# Removing row with the travel speed 'Greater'
+df <- df %>% filter(df$TRAV_SP != 'Greater')
+
+# Replacing 'Stopped' with '0'
+df$TRAV_SP <- str_replace(df$TRAV_SP, 'Stopped', '0')
+
+# Replacing Unknowns with NAs
+df$TRAV_SP <- na_if(df$TRAV_SP, 'Unknown')
+
+# Checking variable type
+class(df$TRAV_SP)
+# TRAV_SP is of a character variable type
+
+# Converting TRAV_SP to a numeric variable
+df$TRAV_SP <- as.numeric(df$TRAV_SP)
+
+# Getting median of TRAV_SP
+median_TRAV_SP <- median(df$TRAV_SP, na.rm=TRUE)
+
+# Replacing NAs with the median of the TRAV_SP variable
+df$TRAV_SP <- replace_na(df$TRAV_SP, median_TRAV_SP)
+```
+
+10. Find the correlation between Age of the drivers and Travel speed (`TRAV_SP`). Hint:  You want to look at the seat positions (`SEAT_POS` variable) to filter out the observations about the drivers, then calculate the correlation. 
+```{r}
+# Under assumption that all drivers are positioned in Front Seat, Left Side...
+# ...(that we are not in the UK or other countries where this isn't the case)
+
+# Filtering out observations about drivers
+driver_df <- df %>% filter(df$SEAT_POS == 'Front Seat, Left Side')
+
+# Calculating correlation between Age and Travel speed of drivers
+# Note: Don't need use='complete.obs' since we handled missing values already
+cor(driver_df$AGE, y = driver_df$TRAV_SP)
+```
+
