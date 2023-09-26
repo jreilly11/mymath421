@@ -1,0 +1,206 @@
+
+---
+output: # rmarkdown::github_document
+  html_document:
+  pdf_document: default
+  word_document: default
+title: "Assignment 4 - Extra Credits"
+---
+
+***How to do it?***: 
+
+- Open the Rmarkdown file of this assignment ([link](assignment4_extra_credits.Rmd)) in Rstudio. 
+
+- Right under each **question**, insert  a code chunk (you can use the hotkey `Ctrl + Alt + I` to add a code chunk) and code the solution for the question. 
+
+- Notice that if there is `eval=FALSE` in the first line of the code chunk, the chunk will not be execute.
+
+- `Knit` the rmarkdown file (hotkey: `Ctrl + Alt + K`) to export an html.  
+
+-  Publish the html file to your Githiub Page. 
+
+***Submission***: Submit the link on Github of the assignment to Canvas. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+-------
+
+This assignment works with the [IMDB Top 1000 data](../data/imdb_top_1000.csv).  Find out more information about this data at [this link](https://www.kaggle.com/datasets/harshitshankhdhar/imdb-dataset-of-top-1000-movies-and-tv-shows).  Import the data and answer the following questions. 
+```{r}
+library(tidyverse)
+df <- read_csv("imdb_top_1000.csv")
+```
+
+1. List all the names of the columns of the data
+```{r}
+names(df)
+```
+
+2. Which movies have the highest money earned (Gross)?
+```{r}
+# Producing a table of movie titles and their money earned (gross) ordered...
+#...from highest to lowest gross
+df %>% select(Series_Title, Gross) %>% arrange(-Gross)
+```
+
+3. What is the lowest rating (IMDB_Rating)?  List five movies have this lowest rating.
+```{r}
+# Getting lowest IMDB_Rating in the data
+min(df$IMDB_Rating)
+
+# Producing list of movie titles and IMDB_Ratings where IMDB_Rating is equal...
+#...to 7.6 (lowest rating in data found above)
+df %>% select(Series_Title, IMDB_Rating) %>% filter(IMDB_Rating == 7.6)
+
+# 5 movies with a low rating of 7.6 include:
+  # Dark Waters
+  # Searching
+  # Once Upon a Time... in Hollywood
+  # Nelyubov
+  # The Florida Project
+```
+
+4. Which year have the most number of movies released in the list?  What is the total of money earned on that year?
+```{r}
+# Getting list of release years and number of movies produced during...
+#...those years
+df %>% count(Released_Year) %>% arrange(-n)
+
+# 2014 had the most number of movies released in the list with 14
+
+# Getting total money earned during 2014
+df %>% filter(Released_Year == 2014) %>% summarise(Total_Money = sum(Gross, na.rm=TRUE))
+
+# In total, $2,755,629,221 was earned in 2014
+```
+
+5. What is the total money earned per movies on average?
+```{r}
+df %>% summarise(Average_Total_Money = mean(Gross, na.rm=TRUE))
+
+# On average, the total money earned per movie is $68,034,751
+```
+
+6. Calculate the average number of votes by year. Calculate the average number of votes of movies that have IMDB rating greater than 9.
+```{r}
+# Calculating average number of votes by year
+df %>% group_by(Released_Year) %>% summarise(Average_Votes = mean(No_of_Votes))
+
+# Calculating average number of votes by year for movies w/ IMDB rating > 9
+df %>% filter(IMDB_Rating > 9) %>% 
+  group_by(Released_Year) %>% 
+  summarise(Average_Votes = mean(No_of_Votes))
+```
+
+7. Calculate the average Meta score in 2020 of movies that have number of votes in the third quartile. 
+```{r}
+# Assuming "in the third quartile" means vote totals between total that is > 50% of ... 
+# ...the data and the total that is >75% of the data
+
+df %>% filter(No_of_Votes > quantile(df$No_of_Votes, probs=0.50) | 
+                No_of_Votes < quantile(df$No_of_Votes, probs=0.75),
+              Released_Year == 2020) %>%
+  summarise(Avg_Meta_Score = mean(Meta_score, na.rm=TRUE))
+```
+
+8. (Optional - Challenging). The current `Runtime` variable is not a numeric. Use the `str_remove` function to remove ` min` from the variables then use `as.numeric` to convert the variable to numeric. Calculate the average running time in the 2010s. Calculate the correlation between running time and rating (adding `use="complete.obs"` in the `cor` function to ignore the missing values).  
+```{r}
+# Removing 'min' from the runtime observations
+df$Runtime <- str_remove(df$Runtime, 'min')
+
+# Converting runtime observations to numeric
+df$Runtime <- as.numeric(df$Runtime)
+
+# Calculating average running time in the 2010s
+df %>% filter(Released_Year >= 2010 | Released_Year < 2020) %>%
+  summarise(Avg_Runtime = mean(Runtime))
+
+# Calculating correlation between running time and rating
+cor(df$Runtime, y = df$IMDB_Rating, use='complete.obs')
+```
+
+9. We can use `select_if` to select columns satisfying a condition and use `summarise_if` to do calculation on columns satisfying a condition.  Try the follows to understand these functions. 
+
+```{r,eval=FALSE}
+# Select only character columns
+df %>% select_if(is.character)
+
+# Calculate the median of all numeric columns
+df %>% summarise_if(is.numeric, mean, na.rm=TRUE)
+```
+
+
+10. Implement the follows functions or combos. Drawing a comment or summary from each calculation. The codes in this question should be different from the codes used in other questions.
+
+- select
+- filter
+- mutate
+- summarise
+- arrange
+- count
+- count + arrange
+- filter + count + arrange
+- group_by + summarise
+- filter + group_by + summarise
+- filter + group_by + summarise + arrange
+```{r}
+# Selecting movie titles and their runtimes
+df %>% select(Series_Title, Runtime)
+```
+```{r}
+# Filtering df to only include movies released in 2005
+df %>% filter(Released_Year == 2005)
+```
+```{r}
+# Creating variable to see the money earned per minute of each film
+df %>% mutate(gross_per_minute = Gross / Runtime)
+```
+```{r}
+# Calculating average runtime of all movies in the data
+df %>% summarise(Avg_Runtime = mean(Runtime))
+```
+```{r}
+# Arranging rows in df by number of votes in descending order
+df %>% arrange(-No_of_Votes)
+```
+```{r}
+# Generating number of movies by genre
+df %>% count(Genre)
+```
+```{r}
+# Counting number of movies for each certificate type and arranging them in...
+# ...descending order
+df %>% count(Certificate) %>%
+  arrange(-n)
+```
+```{r}
+# Determining which director has the most movies that run longer than 90 min...
+# ...in the dataset
+df %>% filter(Runtime > 90) %>%
+  count(Director) %>%
+  arrange(-n)
+```
+```{r}
+# Determining the average IMDB rating for each Star1 (lead) actor/actress...
+# ... and the films they starred in
+df %>% group_by(Star1) %>%
+  summarise(Avg_IMDB_Rating = mean(IMDB_Rating))
+```
+```{r}
+# Determining median meta score for the performances Star2 actors/actresses...
+# ...in Drama films
+df %>% filter(Genre == 'Drama') %>%
+  group_by(Star2) %>%
+  summarise(Median_Meta_Score = median(Meta_score))
+```
+```{r}
+# Determining the average runtime of films directed by Steven Spielberg based on...
+# ...genre and ordering the rows in descending order
+df %>% filter(Director == 'Steven Spielberg') %>%
+  group_by(Genre) %>%
+  summarise(Avg_Runtime = mean(Runtime)) %>%
+  arrange(-Avg_Runtime)
+```
+
