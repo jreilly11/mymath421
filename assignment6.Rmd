@@ -1,0 +1,192 @@
+
+---
+output: 
+  html_document:
+  pdf_document: default
+  word_document: default
+title: "Assignment 6: Visualization - Aesthetic Mapping"
+---
+
+***How to do it?***: 
+
+- Open the Rmarkdown file of this assignment ([link](assignment6.Rmd)) in Rstudio. 
+
+- Right under each **question**, insert  a code chunk (you can use the hotkey `Ctrl + Alt + I` to add a code chunk) and code the solution for the question. 
+
+- `Knit` the rmarkdown file (hotkey: `Ctrl + Alt + K`) to export an html.  
+
+-  Publish the html file to your Githiub Page. 
+
+***Submission***: Submit the link on Github of the assignment to Canvas.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+-------
+
+### Questions on Your Selected Data
+
+Choose a dataset and produce the following types of plots and comment on each plot. Plots should be meaningful. If you use the data we used in class, make sure the plots are not the same as the ones in the slides. 
+```{r}
+# Load data
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+
+df <- read_csv('global_youtube_statistics.csv')
+```
+
+-------
+
+1. For one continuous variable:
+
+- Density
+```{r}
+# Filtering df for channels with less than 100 uploads
+filtered_df <- df %>% filter(uploads<100)
+
+ggplot(filtered_df, aes(x=uploads)) + geom_density(fill='Red') + ggtitle("Upload Distribution of Youtubers (with Less Than 100 Uploads)")
+  
+# The above density plot shows the distribution of Youtubers based on the number of times they have uploaded to their channel (limited to those who uploaded 100 or less videos to make the visualization easier to interpret)
+  
+# It is clear that in the data set, many of the Youtubers have only uploaded a few videos to their channel (a lot more than the number of Youtubers who have uploaded close to 100)
+```
+
+- Histogram 
+```{r}
+# I decided that I want to create a histogram that visualizes the frequency at which Youtubers created their channels over the years. However, to do this, I need to handle one observation that claimed that a Youtuber created their channel in 1970 (Youtube was founded in 2005).
+min(df$created_year, na.rm=TRUE)
+
+# I decided to look into this observation to see why its creating date was bizarre
+df %>% filter(created_year == 1970)
+# Apparently this is Youtube's own Youtube channel. I would assume that this channel was created in 2005 however I went onto the site to double check. Although their channel does not have a founded date listed, the first video on the channel was from 2005 and thus, I have decided to impute 2005 to correct this observation.
+df$created_year <- replace(df$created_year, df$created_year == 1970, 2005)
+
+ggplot(df, aes(x=created_year)) + geom_histogram(bins=10, na.rm=TRUE, color='Black',fill='Red') + ggtitle("Frequency Distribution of Youtube Channels by their Year of Creation")
+
+# It appears that the majority of Youtube channels were created during the early 2010s and that the number of channels created has dropped off over the past half decade. This could potentially indicate a saturation in the Youtube market, as fewer people seem to want to create channels (they could be thinking that they are less likely to get views because many other Youtube channels already have the content that they want to make)
+```
+
+- Boxplot
+```{r}
+# Making sure that values are not displayed in scientific notation
+options(scipen=999)
+
+# Creating boxplot to display distribution of the Youtube Channels in the data set based on the number of subscribers subscribed to the Youtube channel
+ggplot(df, aes(x=subscribers)) + geom_boxplot(fill='Red', color='Black') + ggtitle("Distribution of Youtube Channels by Subscribers")
+# Showing the quartile values displayed on the boxplot
+quantile(df$subscribers)
+
+# The distribution is very skewed to the right, with many outliers that are much higher than the rest of the data. This is understandable given that the majority of the channels in the data set only have tens of millions of subscribers (very close to the minimum in the data with 12.3 million), while the outliers go as far up at 245 million subscribers.
+```
+
+-------
+
+2. For one categorical variable
+
+- Barplot
+```{r}
+# Converting channel_type value 'nan' to NA
+df$channel_type <- na_if(df$channel_type, 'nan')
+
+# Visualizing the number of Youtube channels in the data based on their channel type (being sure to exclude NAs so that these do not appear as a column)
+ggplot(data=subset(df, !is.na(channel_type)), aes(x=channel_type, fill=channel_type)) + geom_bar() +
+# Had to use 2 rows to display x-axis labels due to overlap 
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) + ggtitle("Frequency of Youtube Channels by Channel Type")
+
+# It appears that entertainment and music channels are by for the most frequent in the data, however I would like a clearer definition for an 'Entertainment' channel (this feels like a general catch-all category & I was unable to locate a definition for it on the Kaggle page for this dataset).
+
+```
+
+-------
+
+3. For two continuous variables
+
+- Scatter Plot
+```{r}
+# Filtering out 'NaN' values from columns being used for scatter plot
+filtered_df_2 <- df %>% filter(video_views_for_the_last_30_days != 'NaN', subscribers_for_last_30_days != 'NaN')
+
+# Plotting Youtube channels based on their video views and subscribers in the last 30 days
+ggplot(filtered_df_2, aes(x=video_views_for_the_last_30_days, y=subscribers_for_last_30_days, color='Red')) + geom_point() + ggtitle("Video Views vs Subscribers (Last 30 Days)") + 
+# Decided to take log scale of both axes to better visualize the relationship
+  scale_x_log10() + scale_y_log10()
+
+# There appears to be a positive, albeit weak, correlation between video views and subscribers over the last 30 days. This positive correlation should be expected given that channels with more video views have a better chance of getting subscribers.
+```
+
+- Line Plot
+```{r}
+# Filtering the df for channels with at least 50,000,000 subscribers and a highest_yearly_earnings of at least $15,000,000
+filtered_df_3 <- df %>% filter(subscribers >= 50000000, highest_yearly_earnings >= 15000000)
+
+# Creating a line plot to compare the number of subscribers on a channel to the channel's highest yearly earnings (for channels with at least 50,000,000 subscribers and highest yearly earnings of at least $15,000,000)
+ggplot(filtered_df_3, aes(x=subscribers, y=highest_yearly_earnings, color='Red')) + geom_line() + ggtitle("Highest Yearly Earnings vs Subscribers (min 50,000,000 subs & $15,000,000\nHighest Yearly Earnings)")
+
+# Although the line plot is jagged, there appears to be a positive correlation as the highest yearly earnings of a channel appears to generally increase as the channel's number of subscribers increases.
+```
+
+- Smooth Plot
+```{r}
+# Creating smooth plot comparing number of uploads and highest_monthly_earnings of a channel
+ggplot(df, aes(x=uploads, y=highest_monthly_earnings, color='Red')) + 
+  # Decided to add data points to see how smooth curve fit into data
+  geom_point() + geom_smooth() + ggtitle("Highest Monthly Earnings vs Uploads") + 
+  # Log scaled x and y axes to get better visualization of trend
+  scale_x_log10() + scale_y_log10()
+
+# It seems that as the number of uploads increases, the higher the highest monthly earnings also increases. This trend makes sense given that more uploads likely means that a channel has been around longer and is more established, meaning that they likely have had a month in which they earned more when compared to a less established channel with fewer uploads.
+```
+
+-------
+
+4. For one continuous + one categorical variables
+
+- Density
+```{r}
+# Creating a density plot to show the distribution of Youtube channels based on their number of subscribers. There is a plot for each channel type
+ggplot(data=subset(df, !is.na(channel_type)), aes(x=subscribers, group=channel_type, fill=channel_type)) + geom_density(na.rm=TRUE) + ggtitle("Density Plots of Youtube Channel Types by Subscribers")
+
+# The majority of channels have less than 50 million subscribers, regardless of channel type. It appears that the majority of channels with around 100 million subscribers sports, people, and entertainment channels. As for channels with just over 150 million subscribers, these appear to be education, games, and film channels.
+```
+
+- BoxPlot
+```{r}
+# Filtering df to only include channels in countries that start with the letter 'C'
+filtered_df_4 <- df %>% filter(substr(df$Country, 1, 1) == 'C')
+
+# Creating a boxplot to compare the channel distribution of Youtube channels in countries that start with the letter 'C' based on their number of subscribers
+ggplot(filtered_df_4, aes(x=subscribers, group=Country, fill=Country)) + geom_boxplot(na.rm=TRUE) + ggtitle("Distribution of Youtube Channels in Countries Starting with 'C' by Subscribers")
+
+# It appears that there is only one Youtube channel in the data for China and one Youtube channel in the data for Cuba (given that they only have a bar for the median and no quartiles). Additionally, it appears that Canada, Chile, and Columbia have a similar distribution of Youtube channels based on the number of subscribers, however the number of subscribers to Chilean channels appears to be slightly higher.
+```
+
+-------
+
+5. For two categorical variables: barplot
+```{r}
+df$created_month <- replace(df$created_month, df$created_month == 'nan', NA)
+# Filtering df so that it only includes Youtube channels from the United States and the United Kingdom.
+filtered_df_5 <- df %>% filter(df$Country == 'United States' | df$Country == 'United Kingdom')
+
+# Creating bar plot to show the distribution of Youtube channels based on the month that they were created. This also distinguishes the proportion of channels from the US and the proportion from the UK
+ggplot(data = subset(filtered_df_5, !is.na(created_month)), aes(x=created_month, fill=Country)) + geom_bar(na.rm = TRUE) + ggtitle("Frequency of Youtube Channels by Creation Month in the US and UK")
+
+# It is clear that many more Youtube channels within the dataset are based in the US. It also appears that a lot of the Youtube channels in the US got created in May and September, while many of the Youtube channels in the UK got created in April and July.
+```
+
+
+-------
+
+6. A plot that contains three variables
+```{r}
+# Creating a scatter plot that visualizes channels based on their subscribers in the last 30 days and their highest monthly earnings, with the points being color coded based on the channel's country of origin (US or UK)
+ggplot(data = subset(filtered_df_5, !is.na(created_month)), aes(x=subscribers_for_last_30_days, y = highest_monthly_earnings, color = Country)) + geom_point(na.rm=TRUE) + ggtitle("Subscribers for Last 30 Days vs Highest Monthly Earnings") +
+  # Log scaled x and y axes to get better visualization of trend
+  scale_x_log10() + scale_y_log10()
+
+# Regardless of country, it appears that there is a relatively strong positive correlation between a channel's subscribers in the past 30 days and their highest monthly earnings. And similar to the graph above, it is once again shown that there are many more Youtube channels in the dataset based in the US than there are in the UK.
+```
+
+
