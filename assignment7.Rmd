@@ -103,7 +103,7 @@ ggplot(filtered_df_2, aes(x=key, fill=mode)) + geom_bar(position = 'dodge', na.r
 7. Make a plot using combo filter + ggplot
 ```{r}
 # Comparing the number of song appearances in Spotify vs Apple playlists for The Weeknd
-df %>% filter(df['artist(s)_name'] == 'The Weeknd') %>% ggplot() + geom_point(mapping = aes(x=in_apple_playlists, y=in_spotify_playlists), color = 'Green') + ggtitle("Comparison of Song Appearances in Spotify vs Apple Playlists for The Weeknd") + theme_dark()
+df %>% filter(df['artist(s)_name'] == 'The Weeknd') %>% ggplot() + geom_point(mapping = aes(x=in_apple_playlists, y=in_spotify_playlists), color = 'Green') + ggtitle("Comparison of Song Appearances in Spotify vs Apple Playlists for The Weeknd") + theme_dark() + labs(caption = "Based on 2023 Spotify Data") + theme(plot.caption = element_text(hjust=1))
 
 # The Weeknd's songs appear to follow the general trend of all songs when comparing appearances in Spotify and Apple playlists, as it as they display a positve correlation (the more times a song appears in Apple playlists, the more times they appear in Spotify playlists). 
 ```
@@ -111,7 +111,7 @@ df %>% filter(df['artist(s)_name'] == 'The Weeknd') %>% ggplot() + geom_point(ma
 8. Make a plot using combo group_by + summarise + geom_col
 ```{r}
 # Creating a chart to look at the average beats per minute of a song based on the key in which the song was written
-df %>% filter(!is.na(key)) %>% group_by(key) %>% summarise(avg_bpm = mean(bpm)) %>% ggplot() + geom_col(mapping = aes(x = key, y = avg_bpm), fill = 'Green', color = 'Black') + theme_dark() + ggtitle("Average Beats per Minute of Spotify Songs Based on their Key")
+df %>% filter(!is.na(key)) %>% group_by(key) %>% summarise(avg_bpm = mean(bpm)) %>% ggplot() + geom_col(mapping = aes(x = key, y = avg_bpm), fill = 'Green', color = 'Black') + theme_dark() + ggtitle("Average Beats per Minute of Spotify Songs Based on their Key") + labs(caption = "Based on 2023 Spotify Data") + theme(plot.caption = element_text(hjust=1))
 
 # Regardless of song key, the average beats per minute of a song appears to remain similar (around 120-125 bpm). Songs written in the A key appear to have the highest average bpm, with around 130 bpm.
 ```
@@ -161,7 +161,7 @@ df %>%
   ggplot()+
   geom_point(mapping = aes(x = date, 
                                     y = total_vaccinations, 
-                                    color = vaccine))
+                                    color = vaccine)) + labs(caption = "Based on 2020-2022 Covid-19 Vaccination Data") + theme(plot.caption = element_text(hjust=1))
 
 # It appears that for the entirety of 2022, the vaccine from Sinopharm/Beijing was the most common vaccine being used in Argentina, while the least utilized was the CanSino vaccine. Throughout 2022, the Moderna vaccine saw the biggest uptake as at the start of the year there were around 4 million Moderna vaccines used, while by the end of the year there were around 16 million used.
 ```
@@ -174,7 +174,7 @@ df %>%
   ggplot()+
   geom_line(mapping = aes(x = date, 
                                     y = total_vaccinations, 
-                                    color = vaccine))
+                                    color = vaccine)) + labs(caption = "Based on 2020-2022 Covid-19 Vaccination Data") + theme(plot.caption = element_text(hjust=1))
 
 # The comments from the scatter plot above also apply to this plot as they visualize the same trend, with the only difference being that this plot is a line plot while the plot above was a scatter plot.
 ```
@@ -222,7 +222,7 @@ df %>%
   ggplot()+
   geom_point(mapping=aes(x=date, 
                          y=total_vac2, 
-                         color=location))
+                         color=location)) + labs(caption = "Based on 2020-2022 Covid-19 Vaccination Data") + theme(plot.caption = element_text(hjust=1))
 
 # Japan had the most total vaccines from around April or May 2021 on, also seeing the most rapid increases in vaccines over this time period. It appears that there was potentially inconsistent reporting from South Korea starting from around February 2022 as the total vaccines in South Korea appears to fluctuate between 90 million, 70 million, and just over 50 million from February 2022 on. Similar issues with reporting can be seen from Nepal as there appears to be a gap in reporting from around March 2021 to February 2022. Although Hong Kong and Cyprus had consistent reporting, their total number of vaccines appear to be much lower over this timeframe.
 ```
@@ -237,7 +237,7 @@ df %>%
   ggplot()+
   geom_point(mapping=aes(x=date, 
                          y=total_vac2, 
-                         color=location))
+                         color=location)) + labs(caption = "Based on 2020-2022 Covid-19 Vaccination Data") + theme(plot.caption = element_text(hjust=1))
 
 # By the end of 2022, Argentina had the most total vaccines (around 28 million more than Peru [the next closest country]). This was not always the case however, as halfway through Q1 of 2022, the total number of vaccines in Chile began to increase (meaning that Chile had the most total vaccines out of these countries at that time). Ecuador did not see an increase similar to Chile's until early Q3 in 2022, while Uruguay never saw a dramatic increase in total vaccines during 2022.
 ```
