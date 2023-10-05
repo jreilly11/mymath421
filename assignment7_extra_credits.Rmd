@@ -1,0 +1,151 @@
+
+---
+output: 
+  html_document:
+  pdf_document: default
+  word_document: default
+title: "Assignment 7 - Extra Credits: Practice dplyr and ggplot2"
+---
+
+***How to do it?***: 
+
+- Open the Rmarkdown file of this assignment ([link](assignment7_extra_credits.Rmd)) in Rstudio. 
+
+- Right under each **question**, insert  a code chunk (you can use the hotkey `Ctrl + Alt + I` to add a code chunk) and code the solution for the question. 
+
+- `Knit` the rmarkdown file (hotkey: `Ctrl + Alt + K`) to export an html.  
+
+-  Publish the html file to your Githiub Page. 
+
+***Submission***: Submit the link on Github of the assignment to Canvas
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+
+-------
+
+1. Import the data at https://bryantstats.github.io/math421/data/ds_salaries.csv
+
+    The data description can be found at https://www.kaggle.com/datasets/saurabhshahane/data-science-jobs-salaries
+```{r}
+# Calling libraries
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+
+# Reading in data
+df <- read_csv('ds_salaries.csv')
+```
+
+2. Is there any column that contains NAs?
+```{r}
+colSums(is.na(df))
+
+# There are not any columns that contain NAs
+```
+
+3. What is the most frequent job title in the data?  
+```{r}
+# Returns the most frequent job title
+names(sort(table(df$job_title), decreasing = TRUE))[1]
+
+# Returns how many times the most frequent job title occurs in the data
+max(table(df$job_title))
+
+# The most frequent job title in the data is 'Data Scientist' and it occurs 143 times
+```
+
+4. Find the average salary data of the three most frequent job titles in the data. 
+```{r}
+# Returning the names of the 3 most frequent job titles
+names(sort(table(df$job_title), decreasing = TRUE))[1:3]
+# Need to find average salary for Data Scientist, Data Engineer, and Data Analyst
+
+# Decided to take mean of salary_in_usd column to have a baseline currency to average (as averaging across currencies would not yield an accurate average value)
+df %>% 
+  filter(job_title %in% c("Data Scientist", "Data Engineer", "Data Analyst")) %>%
+  summarise(avg_salary_in_usd = mean(salary_in_usd))
+
+# The average salary of the 3 most frequent job titles in the data (Data Scientist, Data Engineer, and Data Analyst) is $105,809.60
+```
+
+5. What is the job title that have the highest average salary?
+```{r}
+# Getting average salaries (in USD) for all job titles and arranging them in descending order (placing job title with highest average salary at the top of the table)
+df %>% 
+  group_by(job_title) %>%
+  summarise(avg_salary_in_usd = mean(salary_in_usd)) %>%
+  arrange(-avg_salary_in_usd)
+
+# The "Data Analytics Lead" job title has the highest average salary at $405,000.00.
+```
+
+6. Which country gives the highest salary on average? 
+```{r}
+# Getting average salaries (in USD) for all countries where employees reside (as their salaries would depend on where employee resides and not where company is based) and arranging them in descending order (placing the country with highest average salary at the top of the table)
+df %>% 
+  group_by(employee_residence) %>%
+  summarise(avg_salary_in_usd = mean(salary_in_usd)) %>%
+  arrange(-avg_salary_in_usd)
+
+# Malaysia (MY) is the country that gives the highest salary on average with $200,000.00.
+```
+
+7. Plot five meaningful plots. All plots should have title, caption, and appropriate labels.
+```{r}
+# Creating a plot to visualize the average salary in USD based on company size
+df %>% 
+  group_by(company_size) %>% 
+  summarise(avg_salary_in_usd = mean(salary_in_usd)) %>%
+  ggplot() + geom_col(mapping = aes(x=company_size, y=avg_salary_in_usd), fill = "Dark Green", color = "White") + theme_dark() + ggtitle("Average Salary (in USD) by Company Size") + labs(caption = "Based on 2020-2022 Data Science Job Salary Data") + theme(plot.caption = element_text(hjust=1)) + theme(plot.title = element_text(hjust = 0.5)) 
+
+# Unsurprisingly, there is a direct correlation between company size and average salary, with larger companies paying higher salaries than smaller companies on average.
+```
+```{r}
+# Running this line of code to get rid of scientific notation in y-axis interval labels
+options(scipen = 999)
+
+# Creating plot to compare median salaries based on if an employee resides in the United States (US), Mexico (MX), or Canada (CA)
+df %>%
+  filter(employee_residence %in% c("US", "CA", "MX")) %>% 
+  group_by(employee_residence) %>% 
+  summarise(median_salary_in_usd = median(salary_in_usd)) %>%
+  ggplot() + geom_col(mapping = aes(x=employee_residence, y=median_salary_in_usd), fill = "Dark Green", color = "White") + theme_dark() + ggtitle("Median Salary (in USD) by Country of Employee Residence\n(United States (US) vs Mexico (MX) vs Canada (CA))") + labs(caption = "Based on 2020-2022 Data Science Job Salary Data") + theme(plot.caption = element_text(hjust=1)) + theme(plot.title = element_text(hjust = 0.5))
+
+# Seeing that the US has the highest median salary, followed by Canada then Mexico is also not surprising, however seeing how large of a gap there is between the median salaries for workers in the US and Mexico is a bit eye opening.
+```
+```{r}
+# Creating a plot to get the average salaries of data analysts, data engineers, and data scientists by year
+df %>%
+  filter(job_title %in% c("Data Scientist", "Data Engineer", "Data Analyst")) %>% 
+  group_by(job_title, work_year) %>% 
+  summarise(avg_salary_in_usd = mean(salary_in_usd)) %>%
+  ggplot() + geom_col(mapping = aes(x=work_year, y=avg_salary_in_usd, fill=job_title), position = 'dodge', color = "Black") + theme_light() + ggtitle("Average Salaries of Data Analysts, Data Engineers, and Data\nScientists by Year") + labs(caption = "Based on 2020-2022 Data Science Job Salary Data") + theme(plot.caption = element_text(hjust=1))+ theme(plot.title = element_text(hjust = 0.5))
+
+# I was expecting there to be an increase in salary for all three professions year over year, however this was not the case from 2020 to 2021 for data engineers and data scientists. This was likely caused in part by the pandemic, however I would not think these types of roles would have been as heavily impacted given that they can largely be done remotely (the reduced salaries likely came from companies trying to find areas to save money during the resulting economic downturn).
+```
+```{r}
+# Getting proportions of data scientsts based on their employment type
+df %>% 
+  filter(job_title == 'Data Scientist') %>%
+  ggplot() + geom_bar(mapping = aes(x=job_title, fill=employment_type), position = 'Fill', color = 'Black') + theme_light() + ggtitle("Proportions of Data Scientists by Employment Type\n(Full-time (FT) vs Part-time (PT) vs Freelance (FL)") + labs(caption = "Based on 2020-2022 Data Science Job Salary Data") + theme(plot.caption = element_text(hjust=1))+ theme(plot.title = element_text(hjust = 0.5)) + labs(y='Proportion')
+
+# Seeing the majority of data scientists be full time is not surprising, however I would not have been surprised to see a larger proportion of freelance workers. I suppose this was not the case because many data-related projects for companies involve sensitive information that they would not necessarily trust a freelance worker to handle and keep confidential.
+```
+```{r}
+# Converting remote_ratio column to decimals and then to string to make x-axis labels look nicer on plot (as a number, it displayed the remote_ratio x-axis as if it was continuous; as the full percent values [i.e., 0, 50, 100], when converted to a string these values were listed in alphabetical order, which does not match their numeric order [listed columns 0, 100, 50 instead of 0, 50, 100])
+df$remote_proportion <- as.character((df$remote_ratio/100))
+
+# Creating a plot to compare average salaries of employees based on their remote ratio
+df %>% 
+  group_by(remote_proportion) %>% 
+  summarise(avg_salary_in_usd = mean(salary_in_usd)) %>%
+  ggplot() + geom_col(mapping = aes(x=remote_proportion, y=avg_salary_in_usd), fill = "Light Blue", color = "Black") + theme_light() + ggtitle("Average Salary (in USD) for Employees by their Proportion of Time\nWorked Remotely (0% vs 50% vs 100%)") + labs(caption = "Based on 2020-2022 Data Science Job Salary Data") + theme(plot.caption = element_text(hjust=1)) + theme(plot.title = element_text(hjust = 0.5))
+
+# I expected the average salary and proportion of time worked remotely to have an inverse relationship because of how big of a perk working remotely is. Given this, I was surprised to not only see an increase in average salary when jumping from 50% hybrid workers to fully remote workers, but also to see that fully remote workers earned more on average than their counterparts who went into the office 100% of the time.
+```
+
