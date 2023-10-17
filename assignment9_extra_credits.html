@@ -11,7 +11,7 @@
 
 
 
-<title>README</title>
+<title>How effective the Covid vaccines?</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -348,36 +348,93 @@ display: none;
 
 
 
+<h1 class="title toc-ignore">How effective the Covid vaccines?</h1>
 
 </div>
 
 
-<div id="math-421-statistical-analysis-with-r" class="section level1">
-<h1>Math 421: Statistical Analysis with R</h1>
-<div id="assignments" class="section level3">
-<h3>Assignments</h3>
+<p><strong><em>How to do it?</em></strong>:</p>
 <ul>
-<li><a href="Assignment1.html">Assignment 1</a></li>
-<li><a href="Assignment2.html">Assignment 2</a></li>
-<li><a href="assignment3.html">Assignment 3</a></li>
-<li><a href="assignment4.html">Assignment 4</a></li>
-<li><a href="assignment4_extra_credits.html">Assignment 4: Extra
-Credit</a></li>
-<li><a href="assignment5.html">Assignment 5</a></li>
-<li><a href="assignment5_extra_credits.html">Assignment 5: Extra
-Credit</a></li>
-<li><a href="assignment6.html">Assignment 6</a></li>
-<li><a href="assignment7.html">Assignment 7</a></li>
-<li><a href="my_saved_plot.png">Assignment 7: Saved Plot</a></li>
-<li><a href="assignment7_extra_credits.html">Assignment 7: Extra
-Credit</a></li>
-<li><a href="assignment8.html">Assignment 8</a></li>
-<li><a href="assignment9.html">Assignment 9</a></li>
-<li><a href="assignment9_extra_credits.html">Assignment 9: Extra
-Credit</a></li>
+<li><p>Open the Rmarkdown file of this assignment (<a href="assignment9_extra_credits.Rmd">link</a>) in Rstudio.</p></li>
+<li><p>Right under each <strong>question</strong>, insert a code chunk
+(you can use the hotkey <code>Ctrl + Alt + I</code> to add a code chunk)
+and code the solution for the question.</p></li>
+<li><p><code>Knit</code> the rmarkdown file (hotkey:
+<code>Ctrl + Alt + K</code>) to export an html.</p></li>
+<li><p>Publish the html file to your Githiub Page.</p></li>
 </ul>
-</div>
-</div>
+<p><strong><em>Submission</em></strong>: Submit the link on Github of
+the assignment to Canvas</p>
+<hr />
+<p>How effective is the covid vaccines? There are multiple analysis to
+answer the question. This following practice give ONE way to analyze how
+effective the Covid vaccines are. The analysis is done for the United
+States.</p>
+<ol style="list-style-type: decimal">
+<li>Import the two following data</li>
+</ol>
+<ul>
+<li><p>Data 1: <a href="https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/vaccinations/vaccinations.csv" class="uri">https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/vaccinations/vaccinations.csv</a></p></li>
+<li><p>Data 2: <a href="https://covid19.who.int/who-data/vaccination-data.csv" class="uri">https://covid19.who.int/who-data/vaccination-data.csv</a></p></li>
+</ul>
+<pre class="r"><code># Calling libraries
+library(gganimate)
+library(ggplot2)
+library(tidyverse)
+library(lubridate)
+library(stringr)
+
+# Reading in Covid-19 WHO data
+df &lt;- read_csv(&#39;vaccinations.csv&#39;)
+df2 &lt;- read_csv(&#39;vaccination-data.csv&#39;)</code></pre>
+<ol start="2" style="list-style-type: decimal">
+<li>We will merge these two datasets in one for our analysis. We will
+use the <code>inner_join()</code> function to join the two datasets into
+one new datasets where the primary keys are Country and Date. First we
+need to change the names of the two datasets so that they have the same
+name for country and date. In dataset 1, change the name of the
+<code>location</code> to <code>Country</code>. In dataset 2, change the
+name of the variable <code>Date_reported</code> to
+<code>date</code></li>
+</ol>
+<pre class="r"><code>df &lt;- df %&gt;% rename(Country=location)
+
+# Had to also rename COUNTRY to Country in df2
+df2 &lt;- df2 %&gt;% rename(Country = COUNTRY)
+
+# Assuming Date_reported and DATE_UPDATED (variable in data source) refer to the same desired column
+df2 &lt;- df2 %&gt;% rename(date = DATE_UPDATED)</code></pre>
+<ol start="3" style="list-style-type: decimal">
+<li>In dataset 2 and variable <code>Country</code> change
+<code>United States of America</code> to <code>United States</code> (You
+can use <code>str_replace</code>)</li>
+</ol>
+<pre class="r"><code>df2$Country &lt;- str_replace(df2$Country, &#39;United States of America&#39;, &#39;United States&#39;)</code></pre>
+<ol start="4" style="list-style-type: decimal">
+<li>Use <code>inner_join(data1, data2, by = c(&#39;Country&#39;,&#39;date&#39;)</code>
+to create a new dataset.</li>
+</ol>
+<p>For more about joining data, see this datacamp course: <a href="https://app.datacamp.com/learn/courses/joining-data-with-dplyr-in-r" class="uri">https://app.datacamp.com/learn/courses/joining-data-with-dplyr-in-r</a></p>
+<pre class="r"><code># Converting date in df to a date type (to be consistent with date in df2)
+df$date &lt;- as.Date(as.character(mdy(df$date)))
+
+joined_df &lt;- inner_join(df, df2, by = c(&#39;Country&#39;, &#39;date&#39;))</code></pre>
+<ol start="5" style="list-style-type: decimal">
+<li><p>In the new dataset, create a variable <code>death_per_vac</code>
+by dividing the <code>Cumulative_deaths</code> by
+<code>total_vaccinations</code>.</p></li>
+<li><p>Plot the <code>death_per_vac</code> by <code>date</code> for the
+United State using <code>geom_point</code>.</p></li>
+<li><p>Use the log transformation for the plot above for better view.
+Hint: add to the code above
+<code>+scale_y_continuous(trans=&#39;log&#39;)</code></p></li>
+<li><p>Filter the plot above for July to current date only. Give your
+comments.</p></li>
+<li><p>Do the above analysis to other countries or continents. Give your
+comments.</p></li>
+<li><p>Do you have any other analysis for the effectiveness of the
+vaccine covid?</p></li>
+</ol>
 
 
 
