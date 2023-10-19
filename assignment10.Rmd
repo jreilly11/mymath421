@@ -1,0 +1,226 @@
+
+---
+output: 
+  html_document:
+  pdf_document: default
+  word_document: default
+title: "Assignment 10: Predictive Modeling - Part 1"
+---
+
+***How to do it?***: 
+
+- Open the Rmarkdown file of this assignment ([link](assignment10.Rmd)) in Rstudio. 
+
+- Right under each **question**, insert  a code chunk (you can use the hotkey `Ctrl + Alt + I` to add a code chunk) and code the solution for the question. 
+
+- `Knit` the rmarkdown file (hotkey: `Ctrl + Alt + K`) to export an html.  
+
+-  Publish the html file to your Githiub Page. 
+
+***Submission***: Submit the link on Github of the assignment to Canvas
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+
+-------
+
+1. Use the `Adult Census Income` dataset.  We will predict the income (whether or not it is more than 50k or not) of an adult. Import the dataset.  Partition the data into 80% training and 20% testing.  
+```{r}
+# install.packages("caret")
+# install.packages("rattle")
+
+# Calling libraries
+library(tidyverse)
+library(caret)
+library(rpart)
+library(rattle)
+library(randomForest)
+
+# Reading in data
+df = read_csv("adult_census.csv")
+
+# Removing columns
+df <- df %>% select(-fnlwgt, -education.num)
+
+# Renaming target column
+df <- df %>% rename(target=income)
+
+# Making sure all categorical variables are factors
+df <- df %>% 
+  mutate(target = as.factor(target),
+         workclass = as.factor(workclass),
+         education = as.factor(education),
+         marital.status = as.factor(marital.status),
+         occupation = as.factor(occupation),
+         relationship = as.factor(relationship),
+         race = as.factor(race),
+         sex = as.factor(sex),
+         native.country = as.factor(native.country))
+
+# Checking for NAs
+sum(is.na(df))
+
+# There are 0 NAs, however there are '?'s present in the variables below (ran table function to check other categorical variables)
+
+# Replacing the '?'s with NA
+df$workclass <- na_if(df$workclass, '?')
+df$occupation <- na_if(df$occupation, '?')
+df$native.country <- na_if(df$native.country, '?')
+
+# Dropping rows with NAs
+df = drop_na(df)
+
+# Splitting data
+set.seed(2020)
+splitIndex <- createDataPartition(df$target, p = 0.80, list = FALSE)
+df_train <- df[ splitIndex,]
+df_test <- df[ -splitIndex,]
+```
+
+2. Practice Decision Tree.  Do the follows:
+
+  - Use `rpart` package, create a decision tree with maximum depth of 3. 
+  
+  - Calculate the accuracy of the model on the testing data. Notice that the positive outcome here is not `1` but `>50K` or `<50K`. 
+  
+  - Plot the tree
+  
+  - Plot the variable importance by the tree
+```{r}
+# Creating a decision tree with max depth of 3
+tree_1 <- rpart(target ~ ., data = df_train,
+                 control = rpart.control(maxdepth = 3))
+
+# Calculating the accuracy of the model on the testing data
+pred_1 <- predict(tree_1, df_test, type = "class")
+
+cm_1 <- confusionMatrix(data = pred_1, reference = df_test$target)
+cm_1$overall[1]
+
+# Plotting the tree
+fancyRpartPlot(tree_1)
+
+# Plotting the variable importance by the tree
+barplot(tree_1$variable.importance)
+```
+  
+3. Create 3 more trees and compare the testing accuracy of these trees, which tree give the highest testing accuracy.
+```{r}
+# Creating a decision tree with max depth of 2
+tree_2 <- rpart(target ~ ., data = df_train,
+                 control = rpart.control(maxdepth = 2))
+
+# Calculating the accuracy of the model on the testing data
+pred_2 <- predict(tree_2, df_test, type = "class")
+
+cm_2 <- confusionMatrix(data = pred_2, reference = df_test$target)
+cm_2$overall[1]
+
+# Plotting the tree
+fancyRpartPlot(tree_2)
+
+# Plotting the variable importance by the tree
+barplot(tree_2$variable.importance)
+```
+```{r}
+# Creating a decision tree with max depth of 3 and a complexity parameter of 0.10 (vs default value of 0.01)
+tree_3 <- rpart(target ~ ., data = df_train,
+                 control = rpart.control(maxdepth = 3, cp = 0.10))
+
+# Calculating the accuracy of the model on the testing data
+pred_3 <- predict(tree_3, df_test, type = "class")
+
+cm_3 <- confusionMatrix(data = pred_3, reference = df_test$target)
+cm_3$overall[1]
+
+# Plotting the tree
+fancyRpartPlot(tree_3)
+
+# Plotting the variable importance by the tree
+barplot(tree_3$variable.importance)
+```
+```{r}
+# Creating a decision tree with max depth of 2 and a complexity parameter of 0.10 (vs default of 0.01)
+tree_4 <- rpart(target ~ ., data = df_train,
+                 control = rpart.control(maxdepth = 2, cp = 0.10))
+
+# Calculating the accuracy of the model on the testing data
+pred_4 <- predict(tree_4, df_test, type = "class")
+
+cm_4 <- confusionMatrix(data = pred_4, reference = df_test$target)
+cm_4$overall[1]
+
+# Plotting the tree
+fancyRpartPlot(tree_4)
+
+# Plotting the variable importance by the tree
+barplot(tree_4$variable.importance)
+
+# The decision tree with a maximum depth of 3 (tree_1) was had the highest testing accuracy with an accuracy of around 84.35%
+```
+
+4. Practice Random Forest.  Do the follows: 
+
+  - Use `randomForest` package, create a random forest of 1000 trees. 
+  
+  - Calculate the accuracy of the model on the testing data. 
+  
+  - Plot the variable importance by the forest
+```{r}
+# Creating a random forest of 1000 trees
+forest_1 = randomForest(target ~ ., data=df_train, ntree = 1000)
+
+# Calculating accuracy of the model on testing data
+forest_pred_1 <- predict(forest_1, df_test, type = "class")
+forest_cm_1 <- confusionMatrix(data = forest_pred_1, reference = df_test$target)
+forest_cm_1$overall[1]
+
+# Plotting the variable importance for the forest
+importance(forest_1)
+```
+
+5. Create 3 more forests and compare the testing accuracy of these forests, which forest give the highest testing accuracy.
+```{r}
+# Creating a random forest of 500 trees
+forest_2 = randomForest(target ~ ., data=df_train, ntree = 100)
+
+# Calculating accuracy of the model on testing data
+forest_pred_2 <- predict(forest_2, df_test, type = "class")
+forest_cm_2 <- confusionMatrix(data = forest_pred_2, reference = df_test$target)
+forest_cm_2$overall[1]
+
+# Plotting the variable importance for the forest
+importance(forest_2)
+```
+```{r}
+# Creating a random forest of 100 trees with trees having a maximum of 5 terminal nodes
+forest_3 = randomForest(target ~ ., data=df_train, ntree = 1000, maxnodes = 5)
+
+# Calculating accuracy of the model on testing data
+forest_pred_3 <- predict(forest_3, df_test, type = "class")
+forest_cm_3 <- confusionMatrix(data = forest_pred_3, reference = df_test$target)
+forest_cm_3$overall[1]
+
+# Plotting the variable importance for the forest
+importance(forest_3)
+```
+```{r}
+# Creating a random forest of 1000 trees
+forest_4 = randomForest(target ~ ., data=df_train, ntree = 100, maxnodes = 5)
+
+# Calculating accuracy of the model on testing data
+forest_pred_4 <- predict(forest_4, df_test, type = "class")
+forest_cm_4 <- confusionMatrix(data = forest_pred_4, reference = df_test$target)
+forest_cm_4$overall[1]
+
+# Plotting the variable importance for the forest
+importance(forest_4)
+```
+
+6. What is the best model (in term of testing accuracy) among all models (including trees and forests) you have trained?
+```{r}
+# The best model in terms of testing accuracy was a tie between the random forest of 1000 trees and the random forest of 100 trees (forest_1 and forest_2). Given this, the forest with 100 trees (forest_2) is the optimal model because it is simpler than the forest with 1000 trees (forest_1).
+```
+
