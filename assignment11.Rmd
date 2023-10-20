@@ -1,0 +1,222 @@
+
+---
+output: 
+  html_document:
+  pdf_document: default
+  word_document: default
+title: "Assignment 11: Predictive Modeling - Universal Framework"
+---
+
+***How to do it?***: 
+
+- Open the Rmarkdown file of this assignment ([link](assignment11.Rmd)) in Rstudio. 
+
+- Right under each **question**, insert  a code chunk (you can use the hotkey `Ctrl + Alt + I` to add a code chunk) and code the solution for the question. 
+
+- `Knit` the rmarkdown file (hotkey: `Ctrl + Alt + K`) to export an html.  
+
+-  Publish the html file to your Githiub Page. 
+
+***Submission***: Submit the link on Github of the assignment to Blackboard.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+
+-------
+
+1. Install the package mlbench and use the follows to import the data
+
+```{r}
+# install.packages("mlbench")
+
+# Calling libraries
+library(mlbench)
+library(tidyverse)
+library(caret)
+
+# Importing data
+data(PimaIndiansDiabetes)
+df <- tibble(PimaIndiansDiabetes)
+
+# Creating second df to handle second approach to handle missing data (discussed in cell below)
+df2 <- tibble(PimaIndiansDiabetes)
+```
+
+Train and Test a decision tree and a random forest with caret. Plot the variable importance of these models. 
+```{r}
+# All columns seem relevant to analysis and therefore do not need to be removed
+
+# Setting the target variable
+df <- df %>% rename(target=diabetes)
+df2 <- df2 %>% rename(target=diabetes)
+
+# Only need to convert target variable to factor because all other variables are numeric (none are categorical)
+df <- df %>% mutate(target = as.factor(target))
+df2 <- df2 %>% mutate(target = as.factor(target))
+
+# Under assumption that 0s in the data represent missing data because for example having a diastolic blood pressure of 0 means that that person is dead. To handle these missing values, we will compare two approaches: first, getting rid of any rows that have 0s (missing data); and second, imputing these missing values with the averages of the non-missing data
+
+# Approach 1: Treating 0s in df as NAs and removing these rows
+
+# Converting 0 values to NAs in columns in which 0 is not a reasonably possible value
+df$glucose <- na_if(df$glucose, 0)
+df$pressure <- na_if(df$pressure, 0)
+df$triceps <- na_if(df$triceps, 0)
+df$insulin <- na_if(df$insulin, 0)
+df$mass <- na_if(df$mass, 0)
+
+# Dropping rows with NA values
+df = drop_na(df)
+
+# Approach 2: Imputing 0s in df with averages of non-zero values
+
+# Converting 0 values to NAs in columns in which 0 is not a reasonably possible value
+df2$glucose <- na_if(df2$glucose, 0)
+df2$pressure <- na_if(df2$pressure, 0)
+df2$triceps <- na_if(df2$triceps, 0)
+df2$insulin <- na_if(df2$insulin, 0)
+df2$mass <- na_if(df2$mass, 0)
+
+# Imputing the mean of the non-missing data for these NA values
+df2$glucose[is.na(df2$glucose)] = mean(df2$glucose, na.rm = TRUE)
+df2$pressure[is.na(df2$pressure)] = mean(df2$pressure, na.rm = TRUE)
+df2$triceps[is.na(df2$triceps)] = mean(df2$triceps, na.rm = TRUE)
+df2$insulin[is.na(df2$insulin)] = mean(df2$insulin, na.rm = TRUE)
+df2$mass[is.na(df2$mass)] = mean(df2$mass, na.rm = TRUE)
+
+# Splitting data into training and testing
+set.seed(2020)
+splitIndex <- createDataPartition(df$target, p = .70, list = FALSE)
+
+df_train <- df[splitIndex,]
+df_test <- df[-splitIndex,]
+
+splitIndex2 <- createDataPartition(df2$target, p = .70, list = FALSE)
+
+df2_train <- df2[splitIndex2,]
+df2_test <- df2[-splitIndex2,]
+
+# Training and testing decision tree 1 (removed NA rows)
+tree1 <- train(target~., data=df_train, method = "rpart2", maxdepth=3)
+
+tree_1_pred <- predict(tree1, df_test)
+
+tree_1_cm <- confusionMatrix(data=tree_1_pred, reference = df_test$target)
+
+tree_1_cm$overall[1]
+
+plot(varImp(tree1))
+
+# Training and testing decision tree 2 (imputed NAs with mean)
+tree2 <- train(target~., data = df2_train, method = "rpart2", maxdepth=3)
+
+tree_2_pred <- predict(tree2, df2_test)
+
+tree_2_cm <-confusionMatrix(data = tree_2_pred, reference = df2_test$target)
+
+tree_2_cm$overall[1]
+
+plot(varImp(tree2))
+
+# Training and testing random forest 1 (removed NA rows)
+forest1 <- train(target~., data=df_train, method = "rf", ntree=1000)
+
+forest_1_pred <- predict(forest1, df_test)
+
+forest_1_cm <- confusionMatrix(data=forest_1_pred, reference = df_test$target)
+
+forest_1_cm$overall[1]
+
+plot(varImp(forest1))
+
+# Training and testing random forest 2 (imputed NAs with mean)
+forest2 <- train(target~., data = df2_train, method = "rf", ntree=1000)
+
+forest_2_pred <- predict(forest2, df2_test)
+
+forest_2_cm <-confusionMatrix(data = forest_2_pred, reference = df2_test$target)
+
+forest_2_cm$overall[1]
+
+plot(varImp(forest2))
+```
+
+2. Train and Test a `glmnet` model. Plot the variable importance of the model. 
+```{r}
+# Training and testing glmnet model 1 (removed NA rows)
+glmnet1 <- train(target~., data=df_train, method = "glmnet")
+
+glmnet_1_pred <- predict(glmnet1, df_test)
+
+glmnet_1_cm <- confusionMatrix(data=glmnet_1_pred, reference = df_test$target)
+
+glmnet_1_cm$overall[1]
+
+plot(varImp(glmnet1))
+
+# Training and testing glmnet model 2 (imputed NAs with mean)
+glmnet2 <- train(target~., data=df2_train, method = "glmnet")
+
+glmnet_2_pred <- predict(glmnet2, df2_test)
+
+glmnet_2_cm <- confusionMatrix(data=glmnet_2_pred, reference = df2_test$target)
+
+glmnet_2_cm$overall[1]
+
+plot(varImp(glmnet2))
+```
+
+3. Train and test two models that are not `ranger`, `glmnet` or `rpart`  with caret. If possible, plot the variable importance of the model. 
+```{r}
+# Training and testing Support Vector Machine model 1 (removed NA rows)
+svm1 <- train(target~., data=df_train, method = "svmLinear")
+
+svm_1_pred <- predict(svm1, df_test)
+
+svm_1_cm <- confusionMatrix(data=svm_1_pred, reference = df_test$target)
+
+svm_1_cm$overall[1]
+
+# Was unable to find a way to plot variable importance for this model
+## plot(varImp(svm1))
+
+# Training and testing Support Vector Machine model 2 (imputed NAs with mean)
+svm2 <- train(target~., data=df2_train, method = "svmLinear", importance = TRUE)
+
+svm_2_pred <- predict(svm2, df2_test)
+
+svm_2_cm <- confusionMatrix(data=svm_2_pred, reference = df2_test$target)
+
+svm_2_cm$overall[1]
+
+# Was unable to find a way to plot variable importance for this model
+## plot(varImp(svm2))
+```
+```{r}
+# Training and testing Naive Bayes model 1 (removed NA rows)
+nb1 <- train(target~., data=df_train, method = "naive_bayes")
+
+nb_1_pred <- predict(nb1, df_test)
+
+nb_1_cm <- confusionMatrix(data=nb_1_pred, reference = df_test$target)
+
+nb_1_cm$overall[1]
+
+# Was unable to find a way to plot variable importance for this model
+## plot(varImp(nb1))
+
+# Training and testing Naive Bayes model 2 (imputed NAs with mean)
+nb2 <- train(target~., data=df2_train, method = "naive_bayes", importance = TRUE)
+
+nb_2_pred <- predict(nb2, df2_test)
+
+nb_2_cm <- confusionMatrix(data=nb_2_pred, reference = df2_test$target)
+
+nb_2_cm$overall[1]
+
+# Was unable to find a way to plot variable importance for this model
+## plot(varImp(nb2))
+```
+
