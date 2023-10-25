@@ -1,0 +1,173 @@
+
+---
+output: 
+  html_document:
+  pdf_document: default
+  word_document: default
+title: "Assignment 12: Predictive Modeling - Part 3"
+---
+
+***How to do it?***: 
+
+- Open the Rmarkdown file of this assignment ([link](assignment12.Rmd)) in Rstudio. 
+
+- Right under each **question**, insert  a code chunk (you can use the hotkey `Ctrl + Alt + I` to add a code chunk) and code the solution for the question. 
+
+- `Knit` the rmarkdown file (hotkey: `Ctrl + Alt + K`) to export an html.  
+
+-  Publish the html file to your Githiub Page. 
+
+***Submission***: Submit the link on Github of the assignment to Blackboard.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+
+1. Use the `PimaIndiansDiabetes` dataset. Use 15% data for testing. Use cross-validation with of 7 folds to tune random forest `(method='ranger')`.  What are the parameters that produce the greatest accuracy? What is the testing accuracy. 
+```{r}
+####################### Calling Libraries and Creating Data Frames #######################
+# Calling libraries
+library(mlbench)
+library(tidyverse)
+library(caret)
+
+# Importing data
+data(PimaIndiansDiabetes)
+df <- tibble(PimaIndiansDiabetes)
+
+# Creating second df to handle second approach to handle missing data
+df2 <- tibble(PimaIndiansDiabetes)
+
+
+################################# Cleaning Data ##########################################
+# All columns seem relevant to analysis and therefore do not need to be removed
+
+# Setting the target variable
+df <- df %>% rename(target=diabetes)
+df2 <- df2 %>% rename(target=diabetes)
+
+# Only need to convert target variable to factor because all other variables are numeric (none are categorical)
+df <- df %>% mutate(target = as.factor(target))
+df2 <- df2 %>% mutate(target = as.factor(target))
+
+# Under assumption that 0s in the data represent missing data because for example having a diastolic blood pressure of 0 means that that person is dead. To handle these missing values, we will compare two approaches: first, getting rid of any rows that have 0s (missing data); and second, imputing these missing values with the averages of the non-missing data
+
+# Approach 1: Treating 0s in df as NAs and removing these rows
+
+# Converting 0 values to NAs in columns in which 0 is not a reasonably possible value
+df$glucose <- na_if(df$glucose, 0)
+df$pressure <- na_if(df$pressure, 0)
+df$triceps <- na_if(df$triceps, 0)
+df$insulin <- na_if(df$insulin, 0)
+df$mass <- na_if(df$mass, 0)
+
+# Dropping rows with NA values
+df = drop_na(df)
+
+# Approach 2: Imputing 0s in df with averages of non-zero values
+
+# Converting 0 values to NAs in columns in which 0 is not a reasonably possible value
+df2$glucose <- na_if(df2$glucose, 0)
+df2$pressure <- na_if(df2$pressure, 0)
+df2$triceps <- na_if(df2$triceps, 0)
+df2$insulin <- na_if(df2$insulin, 0)
+df2$mass <- na_if(df2$mass, 0)
+
+# Imputing the mean of the non-missing data for these NA values
+df2$glucose[is.na(df2$glucose)] = mean(df2$glucose, na.rm = TRUE)
+df2$pressure[is.na(df2$pressure)] = mean(df2$pressure, na.rm = TRUE)
+df2$triceps[is.na(df2$triceps)] = mean(df2$triceps, na.rm = TRUE)
+df2$insulin[is.na(df2$insulin)] = mean(df2$insulin, na.rm = TRUE)
+df2$mass[is.na(df2$mass)] = mean(df2$mass, na.rm = TRUE)
+
+####################### Splitting Data into Training and Testing #########################
+set.seed(2020)
+splitIndex <- createDataPartition(df$target, p = .85, list = FALSE)
+
+df_train <- df[splitIndex,]
+df_test <- df[-splitIndex,]
+
+splitIndex2 <- createDataPartition(df2$target, p = .85, list = FALSE)
+
+df2_train <- df2[splitIndex2,]
+df2_test <- df2[-splitIndex2,]
+
+################################## Tuning Random Forests #################################
+# Training and testing random forest 1 (removed NA rows)
+trControl = trainControl(method = "cv", number = 7)
+tuneGrid = expand.grid(mtry = 2:4,
+                       splitrule = c('gini', 'extratrees'),
+                       min.node.size = c(1:10))
+
+forest1 <- train(target~., data=df_train, method = "ranger", trControl = trControl, tuneGrid = tuneGrid)
+
+plot(forest1)
+
+forest_1_pred <- predict(forest1, df_test)
+
+forest_1_cm <- confusionMatrix(data=forest_1_pred, reference = df_test$target)
+
+forest_1_cm$overall[1]
+
+# Training and testing random forest 2 (imputed NAs with mean)
+forest2 <- train(target~., data = df2_train, method = "ranger", trControl = trControl, tuneGrid = tuneGrid)
+
+plot(forest2)
+
+forest_2_pred <- predict(forest2, df2_test)
+
+forest_2_cm <-confusionMatrix(data = forest_2_pred, reference = df2_test$target)
+
+forest_2_cm$overall[1]
+# For the first forest, the parameters that create the highest accuracy are a minimum node size of 6 and using the extratrees algorithm with 4 randomly selected predictors. These parameters generate a testing accuracy of roughly 74.14%. For the second forest, the parameters that yield the highest accuracy are a minimum node size of 2 and using the extratrees algorithm with 2 randomly selected predictors. These parameters generate a testing accuracy of roughly 70.43%.
+```
+
+2. Use the `PimaIndiansDiabetes` dataset. Go to https://topepo.github.io/caret/available-models.html and pick a classification model.  Tune the classification model using cross-validation of 7 folds. 
+```{r}
+# Training and testing LDA 1 (removed NA rows)
+
+lda1 <- train(target~., data=df_train, method = "lda", trControl = trControl)
+
+lda_1_pred <- predict(lda1, df_test)
+
+lda_1_cm <- confusionMatrix(data=lda_1_pred, reference = df_test$target)
+
+lda_1_cm$overall[1]
+
+# Training and testing random forest 2 (imputed NAs with mean)
+lda2 <- train(target~., data = df2_train, method = "lda", trControl = trControl)
+
+lda_2_pred <- predict(lda2, df2_test)
+
+lda_2_cm <-confusionMatrix(data = lda_2_pred, reference = df2_test$target)
+
+lda_2_cm$overall[1]
+```
+
+3. (Model Comparison) Use the `PimaIndiansDiabetes` dataset. Pick two models at [this link](https://topepo.github.io/caret/available-models.html) to compare using 7-fold cross validation method. Evaluate the accuracy of the final model on the test data.
+```{r}
+# Models using the first df (removing missing values)
+nb1 <- train(target~., data=df_train, method = "naive_bayes", trControl = trControl)
+
+svm1 <- train(target~., data=df_train, method = "svmLinear", trControl = trControl)
+
+# Models using the second df (imputing missing values with means)
+nb2 <- train(target~., data=df2_train, method = "naive_bayes", trControl = trControl)
+
+svm2 <- train(target~., data=df2_train, method = "svmLinear", trControl = trControl)
+
+results <- resamples(list('Naive Bayes (Approach 1)' = nb1,
+                          'Naive Bayes (Approach 2)' = nb2,
+                          'Support Vector Machine (Approach 1)' = svm1,
+                          'Support Vector Machine (Approach 2)' = svm2))
+bwplot(results)
+
+# All of the models appear to be fairly close in terms of accuracy, however I would argue that the Support Vector Machine (Approach 1) model is the best due to the fact that the upper 50% of its accuracy scores is the highest among all of the models.
+
+# Given this, I will now evaluate the accuracy of the Support Vector Machine (Approach 1) model on the testing data
+svm1_pred <- predict(svm1, df_test)
+svm1_cm <- confusionMatrix(data = svm1_pred, reference = df_test$target)
+svm1_cm$overall[1]
+```
+

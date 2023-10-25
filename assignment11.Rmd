@@ -183,7 +183,7 @@ svm_1_cm$overall[1]
 ## plot(varImp(svm1))
 
 # Training and testing Support Vector Machine model 2 (imputed NAs with mean)
-svm2 <- train(target~., data=df2_train, method = "svmLinear", importance = TRUE)
+svm2 <- train(target~., data=df2_train, method = "svmLinear")
 
 svm_2_pred <- predict(svm2, df2_test)
 
@@ -208,7 +208,7 @@ nb_1_cm$overall[1]
 ## plot(varImp(nb1))
 
 # Training and testing Naive Bayes model 2 (imputed NAs with mean)
-nb2 <- train(target~., data=df2_train, method = "naive_bayes", importance = TRUE)
+nb2 <- train(target~., data=df2_train, method = "naive_bayes")
 
 nb_2_pred <- predict(nb2, df2_test)
 
