@@ -18,4 +18,6 @@
 - [Assignment 10](assignment10.html)
 - [Assignment 11](assignment11.html)
 - [Assignment 12](assignment12.html)
+- [Midterm Markdown File](midterm_toc.html)
+- [Midterm Presentation](Math_421_Midterm_Presentation_John_Reilly.html)
 
