@@ -1,0 +1,419 @@
+
+---
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+  pdf_document: default
+  word_document: default
+title: "Assignment 14: Reddit - Text Mining"
+---
+
+![](reddit.png)
+
+***How to do it?***: 
+
+- Open the Rmarkdown file of this assignment ([link](assignment14.Rmd)) in Rstudio. 
+
+- Right under each **question**, insert  a code chunk (you can use the hotkey `Ctrl + Alt + I` to add a code chunk) and code the solution for the question. 
+
+- `Knit` the rmarkdown file (hotkey: `Ctrl + Alt + K`) to export an html.  
+
+-  Publish the html file to your Githiub Page. 
+
+***Submission***: Submit the link on Github of the assignment to Canvas
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, cache = TRUE)
+```
+
+-------
+
+In this Assignment we will analyze text data scrapped from [Reddit](https://www.reddit.com/), an American social news aggregation, content rating, and discussion website. We will use the package `RedditExtractoR` to help use collect the data.
+
+To learn more about about the package:
+
+https://cran.r-project.org/web/packages/RedditExtractoR/RedditExtractoR.pdf
+
+We use the function `find_thread_urls` to collect the threads in the subreddit `college`. 
+
+```{r, eval=FALSE}
+library(RedditExtractoR) 
+library(tidytext)
+library(ggpubr) 
+library(tidyverse) 
+library(knitr)
+library(lubridate)
+
+df <- find_thread_urls(sort_by="new", subreddit = 'college')
+```
+
+We can save the data for faster access later and also limit our number of times to inquire the data from Reddit. 
+
+```{r, eval=FALSE}
+write_csv(df, "reddit_college.csv")
+```
+
+
+```{r}
+library(RedditExtractoR) 
+library(tidytext)
+library(ggpubr) 
+library(tidyverse) 
+library(knitr)
+library(lubridate)
+df = read_csv("reddit_college.csv")
+```
+
+## Data Wrangling
+
+The collected dataset has two text columns `title` and `text`.  We can create some categorical variables for our analysis.  
+
+The `timestamp` variable can give us the time of the day for the threads. We can convert the time to hours (numeric value from 0 to 24).
+
+```{r}
+df$date_time = as.POSIXct(df$timestamp, origin="1970-01-01")
+df = drop_na(df)
+
+# Create a time variable
+df$time = format(as.POSIXct(df$date_time), format = "%H:%M:%S")
+
+# change time to hours
+df$hours = as.numeric(hms(df$time), "hours")
+hist(df$hours)
+```
+
+We can create categorical variables for our analysis. 
+
+```{r}
+# Create binary variable
+df$day_night = case_when(((df$hours >= 7)&(df$hours<=17))~ "day",
+                         TRUE ~ "night")
+
+df$threads = case_when(df$comments > 2 ~ "Long",
+                         TRUE ~ "Short")
+
+```
+
+
+## Word Cloud
+
+```{r}
+df %>% 
+  unnest_tokens(input = title, output = word) %>% 
+  anti_join(get_stopwords()) %>% 
+  count(word, sort = TRUE) %>% 
+  head(20) %>% 
+  ggplot(aes(x = n, y = reorder(word, n))) +
+  geom_col() +
+  labs(y = '', x = 'Frequency')
+```
+
+We notice that there are some words that have only one letter in the frequency. We can filter out these words
+
+```{r}
+df %>% 
+  unnest_tokens(input = title, output = word) %>% 
+  anti_join(get_stopwords()) %>% 
+  count(word, sort = TRUE) %>% 
+  filter(nchar(word)>1) %>% 
+  head(20) %>% 
+  ggplot(aes(x = n, y = reorder(word, n))) +
+  geom_col() +
+  labs(y = '', x = 'Frequency')
+```
+
+
+```{r}
+library(wordcloud) 
+pal <- brewer.pal(8,"Dark2")
+
+df %>%
+  unnest_tokens(input = title, output = word) %>% 
+  anti_join(get_stopwords()) %>% 
+  count(word, sort = TRUE) %>%
+  filter(nchar(word)>1, word!="college") %>% 
+  with(wordcloud(word, n, random.order = FALSE, max.words = 50, colors=pal))
+```
+
+
+## Sentiment Analysis
+
+```{r}
+df %>%
+    unnest_tokens(input = title, output = word) %>% 
+    anti_join(get_stopwords()) %>% 
+    count(day_night, word, sort = TRUE) %>%
+    group_by(day_night) %>% 
+    inner_join(get_sentiments("bing")) %>%
+    filter(!is.na(sentiment)) %>%
+    count(sentiment, sort = TRUE) %>% 
+    group_by(day_night) %>% 
+    mutate(n = n/sum(n)) %>% 
+    ggplot(aes(day_night, n, fill=sentiment))+geom_col(position = 'dodge')+
+    labs(y='Relative Frequency', x ='')
+
+```
+
+
+## Modeling
+
+Let's train a model to predict from the title if a thread is long (more than 2 comments) or short (no more than 2 comments).
+
+```{r}
+# library(caret)
+# library(themis)
+# library(textrecipes)
+# library(tidyverse)
+# 
+# df = read_csv('reddit_college.csv')
+# 
+# df$threads = case_when(df$comments > 2 ~ "Long",
+#                          TRUE ~ "Short")
+# 
+# # Select data and set target 
+# df <- df %>% 
+#   mutate(target = threads) %>% 
+#   select(target, title) 
+# 
+# # Convert text data to numeric variables
+# a <- recipe(target~title,
+#        data = df) %>% 
+#   step_tokenize(title) %>% 
+#   step_tokenfilter(title, max_tokens = 100) %>% 
+#   step_tfidf(title) %>% 
+#   step_normalize(all_numeric_predictors()) %>% 
+#   step_smote(target) %>% 
+#   prep()
+# df <- juice(a)
+# 
+# # Using Caret for modeling
+# set.seed(12345)
+# splitIndex <- createDataPartition(df$target, p = .7, 
+#                                   list = FALSE)
+# df_train <- df[ splitIndex,]
+# df_test <- df[-splitIndex,]
+# 
+# forest_ranger <- train(target~., data=df_train, 
+#                         method = "ranger")
+# 
+# pred <- predict(forest_ranger, df_test)
+# 
+# cm <- confusionMatrix(data = pred, reference = df_test$target)
+# cm$overall[1]
+# 
+# d = data.frame(pred = pred, obs = df_test$target)
+# library(yardstick)
+# d %>% conf_mat(pred, obs) %>% autoplot
+```
+
+---
+
+## Question
+Collect data from Reddit to do text mining (word clouds, sentiment analysis and modelling) for at least two text variables. 
+
+## Collecting and Storing Data
+```{r}
+library(RedditExtractoR) 
+library(tidytext)
+library(ggpubr) 
+library(tidyverse) 
+library(knitr)
+library(lubridate)
+
+##########################################################################################
+# Had to comment out the below lines of code because it was not knitting. Figured this is not a huge deal since I was able to write the data that was extracted from Reddit into a csv, then call this csv to define the history_df
+##########################################################################################
+
+# Collecting data from the AskHistorians subreddit
+#history_df <- find_thread_urls(sort_by="new", subreddit = 'AskHistorians')
+
+# Writing collected data to a csv for easier access
+#write_csv(history_df, "History_Reddit.csv")
+```
+
+```{r}
+library(RedditExtractoR) 
+library(tidytext)
+library(ggpubr) 
+library(tidyverse) 
+library(knitr)
+library(lubridate)
+# Reading in data from csv
+history_df = read_csv("History_Reddit.csv")
+```
+
+## Looking at Time Variables
+```{r}
+# Extracting time of day from date_time variable
+history_df$date_time = as.POSIXct(history_df$timestamp, origin="1970-01-01")
+history_df = drop_na(history_df)
+
+# Creating a new variable for time
+history_df$time = format(as.POSIXct(history_df$date_time), format = "%H:%M:%S")
+
+# Creating a variable to capture just the hours from the time variable
+history_df$hours = as.numeric(hms(history_df$time), "hours")
+
+# Plotting the hours variable to see post frequency at each hour
+hist(history_df$hours)
+
+# Creating a variable to see the range of dates during which the extracted posts were created
+history_df$date <- as.Date(history_df$date_time)
+# Ended up being from 11/03 to 11/15
+
+# Creating a categorical variable that determines if a post was posted during the early part of the month (before the 10th) or during the middle of the month (after the 10th)
+history_df$time_of_month <- case_when(history_df$date < '2023-11-10' ~ 'Early Month',
+                                      TRUE ~ 'Mid-Month')
+```
+
+## Creating Word Clouds
+
+```{r}
+# Creating a word cloud that gives the most frequent words for based on the post titles in the subreddit
+library(wordcloud) 
+
+history_df %>%
+  unnest_tokens(input = title, output = word) %>% 
+  anti_join(get_stopwords()) %>% 
+  count(word, sort = TRUE) %>%
+  # Ensuring we exclude any words with frequencies that contain only one letter (which tend to not be useful words to have in our word cloud)
+  filter(nchar(word)>1, word!="AskHistorians") %>% 
+  with(wordcloud(word, n, random.order = FALSE, max.words = 50, colors=pal))
+
+# Creating a word cloud that gives the most frequent words for based on the post texts in the subreddit
+library(wordcloud) 
+
+history_df %>%
+  unnest_tokens(input = text, output = word) %>% 
+  anti_join(get_stopwords()) %>% 
+  count(word, sort = TRUE) %>%
+  # Ensuring we exclude any words with frequencies that contain only one letter (which tend to not be useful words to have in our word cloud)
+  filter(nchar(word)>1, word!="AskHistorians") %>% 
+  with(wordcloud(word, n, random.order = FALSE, max.words = 50, colors=pal))
+```
+
+## Conducting Sentiment Analysis
+
+```{r}
+# Conducting sentiment analysis comparison of early vs mid-month posts based on words in the subreddit post titles
+history_df %>%
+    unnest_tokens(input = title, output = word) %>% 
+    anti_join(get_stopwords()) %>% 
+    count(time_of_month, word, sort = TRUE) %>%
+    group_by(time_of_month) %>% 
+    inner_join(get_sentiments("bing")) %>%
+    filter(!is.na(sentiment)) %>%
+    count(sentiment, sort = TRUE) %>% 
+    group_by(time_of_month) %>% 
+    mutate(n = n/sum(n)) %>% 
+    ggplot(aes(time_of_month, n, fill=sentiment))+geom_col(position = 'dodge')+
+    labs(y='Relative Frequency', x ='')
+
+# Conducting sentiment analysis comparison of early vs mid-month posts based on words in the subreddit post texts
+history_df %>%
+    unnest_tokens(input = text, output = word) %>% 
+    anti_join(get_stopwords()) %>% 
+    count(time_of_month, word, sort = TRUE) %>%
+    group_by(time_of_month) %>% 
+    inner_join(get_sentiments("bing")) %>%
+    filter(!is.na(sentiment)) %>%
+    count(sentiment, sort = TRUE) %>% 
+    group_by(time_of_month) %>% 
+    mutate(n = n/sum(n)) %>% 
+    ggplot(aes(time_of_month, n, fill=sentiment))+geom_col(position = 'dodge')+
+    labs(y='Relative Frequency', x ='')
+```
+
+## Modelling
+
+```{r}
+##########################################################################################
+# Have to comment out this entire cell because I am unable to install the textrecipes package and still need to knit this section of the file
+##########################################################################################
+
+# Creating model using titles
+# library(caret)
+# library(themis)
+# library(textrecipes)
+# library(tidyverse)
+# 
+# # Creating time of day variable that we can try to predict (will look at posts as either morning [before 12:00 pm] or afternoon [12:00 pm or later])
+# history_df$time_of_day = case_when(df$time < '12:00:00' ~ "Morning",
+#                          TRUE ~ "Afternoon")
+# 
+# # Select data and set target 
+# history_df_model1 <- history_df %>% 
+#   mutate(target = time_of_day) %>% 
+#   select(target, title) 
+# 
+# # Convert text data to numeric variables
+# b <- recipe(target~title,
+#        data = history_df) %>% 
+#   step_tokenize(title) %>% 
+#   step_tokenfilter(title, max_tokens = 100) %>% 
+#   step_tfidf(title) %>% 
+#   step_normalize(all_numeric_predictors()) %>% 
+#   step_smote(target) %>% 
+#   prep()
+# history_df_model1 <- juice(b)
+# 
+# 
+# set.seed(12345)
+# splitIndex <- createDataPartition(history_df_model1$target, p = .7, 
+#                                   list = FALSE)
+# df_train1 <- history_df_model1[ splitIndex,]
+# df_test1 <- history_df_model1[-splitIndex,]
+# 
+# forest_ranger1 <- train(target~., data=df_train1, 
+#                         method = "ranger")
+# 
+# pred1 <- predict(forest_ranger1, df_test1)
+# 
+# cm1 <- confusionMatrix(data = pred1, reference = df_test1$target)
+# cm1$overall[1]
+# 
+# # Plotting conufsion matrix
+# d1 = data.frame(pred = pred1, obs = df_test1$target)
+# library(yardstick)
+# d1 %>% conf_mat(pred1, obs) %>% autoplot
+# 
+# # Creating model using text (still predicting post time of day)
+# 
+# # Select data and set target 
+# history_df_model2 <- history_df %>% 
+#   mutate(target = time_of_day) %>% 
+#   select(target, text) 
+# 
+# # Convert text data to numeric variables
+# c <- recipe(target~text,
+#        data = history_df) %>% 
+#   step_tokenize(text) %>% 
+#   step_tokenfilter(text, max_tokens = 100) %>% 
+#   step_tfidf(text) %>% 
+#   step_normalize(all_numeric_predictors()) %>% 
+#   step_smote(target) %>% 
+#   prep()
+# history_df_model2 <- juice(c)
+# 
+# 
+# set.seed(12345)
+# splitIndex <- createDataPartition(history_df_model2$target, p = .7, 
+#                                   list = FALSE)
+# df_train2 <- history_df_model2[ splitIndex,]
+# df_test2 <- history_df_model2[-splitIndex,]
+# 
+# forest_ranger2 <- train(target~., data=df_train2, 
+#                         method = "ranger")
+# 
+# pred2 <- predict(forest_ranger2, df_test2)
+# 
+# cm2 <- confusionMatrix(data = pred2, reference = df_test2$target)
+# cm2$overall[1]
+# 
+# # Plotting conufsion matrix
+# d2 = data.frame(pred = pred2, obs = df_test2$target)
+# library(yardstick)
+# d2 %>% conf_mat(pred2, obs) %>% autoplot
+```
+
