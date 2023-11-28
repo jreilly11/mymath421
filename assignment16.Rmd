@@ -1,0 +1,237 @@
+
+---
+output: 
+  html_document:
+  pdf_document: default
+  word_document: default
+title: "Assignment 16: Writing a function - Loop"
+---
+
+***How to do it?***: 
+
+- Open the Rmarkdown file of this assignment ([link](assignment16.Rmd)) in Rstudio. 
+
+- Right under each **question**, insert  a code chunk (you can use the hotkey `Ctrl + Alt + I` to add a code chunk) and code the solution for the question. 
+
+- `Knit` the rmarkdown file (hotkey: `Ctrl + Alt + K`) to export an html.  
+
+-  Publish the html file to your Githiub Page. 
+
+***Submission***: Submit the link on Github of the assignment to Canvas
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+```
+
+-------
+```{r}
+# Copying over functions from previous assignment so that I can knit this assignment
+mean_impute <- function(x)
+{
+mean_of_x <- mean(x, na.rm = TRUE)
+library(tidyr)
+x <- replace_na(x, mean_of_x)
+return(x)
+}
+```
+
+1. Write the following function. Give examples to test your function.
+
+- Input: a data frame
+
+- Output: a data frame with all the missing of numeric variables replaced by the associated means.
+
+Hint: [Similar function](https://bryantstats.github.io/math421/gganimate/18_writing_functions.html#28)
+```{r}
+numeric_df_impute <- function(d){
+  for (i in 1:length(d))
+  {
+      d[[i]] <- mean_impute(d[[i]])
+  }
+  return(d)
+}
+
+# Test Case: Created a numeric data frame with four missing values to be imputed by the function. A working function should impute the four missing values so that the result goes from 1, 1, 2 to 0, 0, 0 when using the colSums function
+a = c(1, 2, NA, 3)
+b = c(4, NA, 5, 6)
+c = c(7, NA, NA, 8)
+df1 = data.frame(a,b,c)
+colSums(is.na(df1))
+
+df2 <- numeric_df_impute(df1)
+colSums(is.na(df2))
+
+```
+```{r}
+df2
+```
+
+-------
+
+2. Write the following function. Give examples to test your function.
+
+- Input: a data frame
+
+- Output: a data frame with all the missing of variables replaced by the associated means (for numeric variables) or modes (for non-numeric variables).
+
+Hint: Use If-statement to combine the function in Problem 1 and the function in [this example](https://bryantstats.github.io/math421/gganimate/18_writing_functions.html#28)
+```{r}
+mode_impute <- function(x)
+{
+  if(!is.numeric(x))
+  {
+    # Find the mode of x
+    mode_of_x <- names(sort(-table(x)))[1]
+    # Replace the missing by the mode
+    library(tidyr)
+    x <- replace_na(x, mode_of_x) 
+  }
+return(x)    
+}
+
+df_impute <- function(d)
+{for (i in 1:length(d))
+{if (is.numeric(d[[i]]))
+{
+  d[[i]] <- mean_impute(d[[i]])
+}
+ else
+ {
+   d[[i]] <- mode_impute(d[[i]])
+ }
+}
+ return(d) 
+}
+
+# Test Case: Created a data frame with mixed types and five missing values to be imputed by the function. A working function should impute the five missing values so that the result goes from 1, 1, 2, 1 to 0, 0, 0, 0 when using the colSums function
+a = c(1, 2, NA, 3)
+b = c(4, NA, 5, 6)
+c = c(7, NA, NA, 8)
+d = c('Red', 'Blue', NA, 'Blue')
+df3 = data.frame(a,b,c,d)
+colSums(is.na(df3))
+
+df4 <- df_impute(df3)
+colSums(is.na(df4))
+```
+```{r}
+df4
+```
+
+
+-------
+
+3. Write the following function. Give examples to test your function.
+
+- Input: a data frame
+
+- Output: Bar plots of all non-numeric variables
+
+Hint: [Similar function](https://bryantstats.github.io/math421/gganimate/18_writing_functions.html#33)
+```{r}
+non_num_plots <- function(d)
+{library(ggplot2)
+  for (i in 1:length(d))
+{
+  if(!is.numeric(d[[i]]))
+  {print(ggplot(data = d, aes(x = d[[i]])) + geom_bar() + labs(x = names(d)[i]))
+  }
+}
+}
+
+# Decided to add more columns and create a new df to make the visuals a bit easier to see and understand when using this function (originally used Titanic df and the visuals were very crowded because of variables such as Name for example)
+age = c(9, 13, 16, 19, 22, 26, 28, 29, 32, 35, 43, 56, 67, 78, 83)
+sex = c('Male', 'Female', 'Female', 'Male', 'Female', 'Male', 'Male', 'Female', 'Female', 'Female', 'Male', 'Female', 'Male', 'Female', 'Male')
+num_grade = c(94, 85, 86, 96, 97, 77, 93, 75, 96, 83, 85, 87, 86, 99, 74)
+letter_grade = c('A', 'B', 'B', 'A', 'A', 'C', 'A', 'C', 'A', 'B', 'B', 'B', 'B', 'A', 'C')
+absent_ind = c('N', 'Y', 'Y', 'N', 'N', 'Y', 'N', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'N', 'Y')
+num_absent = c(0, 1, 2, 0, 0, 4, 0, 5, 1, 2, 1, 1, 3, 0, 6)
+
+df5 = data.frame(age, sex, num_grade, letter_grade, absent_ind, num_absent)
+
+# Test case: A working function should return bar plots of all of the non-numeric variables in the Titanic data set (Name, Sex, Ticket, Cabin, & Embarked)
+non_num_plots(df5)
+```
+
+
+-------
+
+4. Write the following function. Give examples to test your function.
+
+- Input: a data frame
+
+- Output: all possible the bar plots of a non-numeric variable filled by a non-numeric variable.
+
+Hint: [Similar function](https://bryantstats.github.io/math421/gganimate/18_writing_functions.html#40)
+```{r}
+all_possible_bar_plots <- function(d)
+{library(ggplot2)
+  for (i in 1:(length(d)-1))
+  for (j in (i+1):length(d))
+{if ((!is.numeric(d[[i]])) & (!is.numeric(d[[j]])))
+{print(ggplot(data = d, aes(x= d[[i]], fill= d[[j]]))+ geom_bar() + 
+         labs(x= names(d)[i], fill = names(d)[j]))
+ print(ggplot(data = d, aes(x= d[[j]], fill= d[[i]]))+ geom_bar() + 
+         labs(x= names(d)[j], fill = names(d)[i]))
+}
+}
+}
+
+
+# Test case: A working function will produce all of the possible bar plots from the df5 data in which a non-numeric variable can be plotted while having the bars filled with another non-numeric variable (this includes flipped pairs [i.e., a bar plot of sex filled by letter_grade and a bar plot of letter_grade filled by sex])
+all_possible_bar_plots(df5)
+```
+
+-------
+
+5. Write the following function. Give examples to test your function.
+
+- Input: a data frame
+
+- Output: 
+
+  - all possible the bar plots of a non-numeric variable filled by a non-numeric variable.
+  
+  - all possible the density plots of a numeric variable colored by a non-numeric variable
+  
+  - all possible the scatter plots.
+
+Hint: Combine [this function](https://bryantstats.github.io/math421/gganimate/18_writing_functions.html#37), [this function](https://bryantstats.github.io/math421/gganimate/18_writing_functions.html#40), and the function in Question 4. One way to combine is creating a new function, `quick_plot`, and call these three functions within `quick_plot`. 
+```{r}
+quick_plot <- function(d)
+{library(ggplot2)
+ for (i in 1:(length(d)-1))
+  for (j in (i+1):length(d))
+{if ((!is.numeric(d[[i]])) & (!is.numeric(d[[j]])))
+{print(ggplot(data = d, aes(x= d[[i]], fill= d[[j]]))+ geom_bar() + 
+         labs(x= names(d)[i], fill = names(d)[j]))
+ print(ggplot(data = d, aes(x= d[[j]], fill= d[[i]]))+ geom_bar() + 
+         labs(x= names(d)[j], fill = names(d)[i]))
+  
+}
+  else if ((!is.numeric(d[[i]])) & (is.numeric(d[[j]])))
+    {
+    print(ggplot(d, aes(x = d[[j]], color = d[[i]]))+ 
+              geom_density()+labs(x = names(d)[j], color = names(d)[i]))
+    }
+  else if ((is.numeric(d[[i]])) & (!is.numeric(d[[j]])))
+  {
+    print(ggplot(d, aes(x = d[[i]], color = d[[j]]))+ 
+              geom_density()+labs(x = names(d)[i], color = names(d)[j]))  
+  }
+  else if ((is.numeric(d[[i]])) & (is.numeric(d[[j]])))
+    {
+    print(ggplot(d, aes(x = d[[i]], y = d[[j]]))+ 
+              geom_point()+
+              labs(x = names(d)[i], y = names(d)[j]))
+    print(ggplot(d, aes(x = d[[j]], y = d[[i]]))+ 
+              geom_point()+
+              labs(x = names(d)[j], y = names(d)[i]))
+    }
+  }
+}
+
+# Test case: A working function will produce all of the possible bar plots in which a non-numeric variable can be filled by another non-numeric variable (expecting 6 of these based on df5 variables), all of the possible density plots in which a numeric variable will be colored by a non-numeric variable (expecting 9 of these based on df5 variables), and all of the possible scatter plots (comprised of 2 numeric variables) (expecting 6 of these based on df5 variables)
+quick_plot(df5)
+```
+
