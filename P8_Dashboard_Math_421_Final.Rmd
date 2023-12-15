@@ -1,0 +1,128 @@
+---
+title: "Fighter Characteristics"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    logo: UFC_Logo1.png
+    source_code: embed
+    social: menu
+
+runtime: shiny
+---
+<style>                     
+.navbar {
+  background-color:black;
+  border-color:black;
+}
+.navbar-brand {
+color white!important;
+}
+</style>   
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(plotly)
+library(knitr)
+library(DT)
+
+df <- read_csv('ufc_fighter_data.csv')
+df$fighter_dob <- as.Date(df$fighter_dob, "%m/%d/%Y")
+
+# Date_range cutoff values may look arbitrary but are just the cutoffs for the ages in days (365 * # of years)
+df <- df %>% mutate(total_fights = rowSums(df[ , c(10,11,12)], na.rm=TRUE), 
+                    win_pct = fighter_w/total_fights, 
+                    over_under_500 = case_when(win_pct >= .500 ~ 'Over', TRUE ~ 'Under'), 
+                    weight_range = case_when(fighter_weight_lbs >= 251 ~ '251-300',
+                                             fighter_weight_lbs >= 201 ~ '201-250',
+                                             fighter_weight_lbs >= 151 ~ '151-200',
+                                             fighter_weight_lbs >= 100 ~ '100-150'),
+                    age = as.numeric(floor((Sys.Date() - fighter_dob)/365)),
+                    age_range = case_when (age >= 51 ~ '51-60',
+                                           age >= 41 ~ '41-50',
+                                           age >= 31 ~ '31-40',
+                                           age >= 19 ~ '19-30')) %>% 
+                      select(-fighter_nc_dq, -fighter_nickname, -fighter_id, -fighter_url)
+
+df = drop_na(df)
+```
+
+{.sidebar}
+=======================================================================
+### Ultimate Fighting Championship (UFC)
+
+The Ultimate Fighting Championship (UFC) was founded in November 1993 and holds 
+a rich history of Mixed Martial Arts (MMA) combat. This data contains the characteristics of UFC fighters spanning from 1994 to 2023.
+
+```{r}
+dateRangeInput(inputId = "dob_input", 
+               label = h2("DOB Range"), 
+               start = min(df$fighter_dob), 
+               end = max(df$fighter_dob),
+               min = min(df$fighter_dob), 
+               max = max(df$fighter_dob))
+```
+
+
+Body Measurments
+=======================================================================
+Row {data-width=500}
+-----------------------------------------------------------------------
+
+### Height & Weight
+
+```{r}
+renderPlotly({
+  p <- df %>% filter(fighter_dob > input$dob_input[1], fighter_dob < input$dob_input[2]) %>% ggplot(aes(x=fighter_height_cm, y=fighter_weight_lbs, color = over_under_500)) + geom_point() + theme_dark() + ggtitle("Comparison of Fighter Height (cm),\nWeight (lbs), & Record") + labs(caption = "Based on 1994-2023 UFC Fighter Data") + theme(plot.caption = element_text(hjust=1)) + theme(plot.title = element_text(hjust=0.5)) + theme(plot.title = element_text(size=10))
+  
+ggplotly(p)
+})
+```
+
+Row {data-width=500}
+-----------------------------------------------------------------------
+
+### Reach
+
+```{r}
+renderPlotly({
+  p2 <- df %>% filter(fighter_dob > input$dob_input[1], fighter_dob < input$dob_input[2]) %>% ggplot(aes(x=fighter_reach_cm, color = over_under_500)) + geom_density() + theme_dark() + ggtitle("Comparison of Fighter Reach (cm)\nby Record") + labs(caption = "Based on 1994-2023 UFC Fighter Data") + theme(plot.caption = element_text(hjust=1)) + theme(plot.title = element_text(hjust=0.5)) + theme(plot.title = element_text(size=10))
+  
+ggplotly(p2)
+})
+```
+
+Fighter Style & Experience
+=======================================================================
+Column {data-width=500}
+-----------------------------------------------------------------------
+### Style
+
+```{r}
+renderPlotly({
+  p3 <- df %>% filter(fighter_dob > input$dob_input[1], fighter_dob < input$dob_input[2]) %>% ggplot(aes(x=fighter_stance, fill=over_under_500)) + geom_bar() + ggtitle("Number of Fighters by Fighter Stance\n& Record")+ labs(caption = "Based on 1994-2023 UFC Fighter Data") + theme(plot.caption = element_text(hjust=1)) + theme(plot.title = element_text(hjust=0.5)) + theme(plot.title = element_text(size=10)) + ylab('# of Fighters')
+  
+ggplotly(p3)
+})
+```
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+### Experience
+
+```{r}
+renderPlotly({
+  p4 <- df %>% filter(fighter_dob > input$dob_input[1], fighter_dob < input$dob_input[2]) %>% ggplot(aes(x=age, y=total_fights, color = over_under_500)) + geom_point() + ggtitle("Comparison of Age,\nTotal Fights, & Record")+ labs(caption = "Based on 1994-2023 UFC Fighter Data") + theme(plot.caption = element_text(hjust=1)) + theme(plot.title = element_text(hjust=0.5)) + theme(plot.title = element_text(size=10))
+  
+ggplotly(p4)
+})
+```
+
+
+Data
+=======================================================================
+```{r}
+datatable(df, options = list(pagelength = 25))
+```
